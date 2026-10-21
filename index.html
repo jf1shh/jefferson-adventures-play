@@ -15,7 +15,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/qhjRjMJwogfdbYn8XXOqL8d39OXl7RgzKzKs7OuNX4='; style-src 'sha256-SnXVkTsC28eWXoe94rb+jTRgnSNGMK8ZDtFHMkPCSTQ='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-T9IM2zKxzFFXGbwGi993t5yDJGoKgRN76/ppmifUhzY='; style-src 'sha256-SnXVkTsC28eWXoe94rb+jTRgnSNGMK8ZDtFHMkPCSTQ='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Jefferson's Adventures: a cozy platformer starring Jefferson, an orange tabby. Six short adventures, no ads, no tracking, works offline.">
@@ -1870,8 +1870,11 @@ function drawDecor(s, d, t) {
     case "window": {
       const night = false;
       rect(x, y, w, h, d.sun ? "#ffd987" : night ? "#2b3060" : "#a9d4f0");
+      // The view outside stays inside the pane: the treetop is cut off by the sill, not drawn on the wall.
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
       if (!d.sun) { circ(x + 60, y + h + 10, 60, "#7fbf6a"); drawCloud(x + w * 0.45, y + 30, 0.5); }
       else circ(x + w * 0.65, y + 55, 26, "#fff1b8");
+      ctx.restore();
       ctx.strokeStyle = "#fbf6ee"; ctx.lineWidth = 8; ctx.strokeRect(x, y, w, h);
       ctx.beginPath(); ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h); ctx.stroke();
       rect(x - 12, y + h, w + 24, 10, "#e9dcc6");
@@ -1956,7 +1959,10 @@ function drawSolid(s, b, t) {
     case "counter":
       rect(x, y + 10, w, h - 10, "#c7a27a"); rect(x - 6, y, w + 12, 12, "#efe8dc"); rect(x - 6, y + 10, w + 12, 3, "#d8cfc0");
       ctx.strokeStyle = "#a9845e"; ctx.lineWidth = 3;
-      for (let xx = x + 8; xx < x + w - 50; xx += 86) { ctx.strokeRect(xx, y + 24, 76, h - 34); rect(xx + 34, y + 34, 10, 4, "#7a5a3a"); }
+      { // doors spread evenly so the last one never runs past the counter's end
+        const n = Math.max(1, Math.round((w - 6) / 86)), dw = (w - 16 - (n - 1) * 10) / n;
+        for (let i = 0; i < n; i++) { const xx = x + 8 + i * (dw + 10); ctx.strokeRect(xx, y + 24, dw, h - 34); rect(xx + dw / 2 - 5, y + 34, 10, 4, "#7a5a3a"); }
+      }
       rect(x + 4, y + h - 8, w - 8, 8, "#8f6d4c"); break;
     case "bookcase": {
       rect(x, y, w, h, "#7a4e2d"); rect(x + 8, y + 10, w - 16, h - 10, "#93653e");
