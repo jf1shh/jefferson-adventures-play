@@ -68,7 +68,8 @@ back).
 
 Sound effects, music, volume, touch controls (auto, on or off), vibration, reduced motion and
 full screen. **Assist mode** gives endless climbing and calmer hazards, which is good for
-younger players or a relaxed run.
+younger players or a relaxed run. In full screen, the button with four inward corners (top right)
+leaves it from any screen.
 
 ## Saving and privacy
 

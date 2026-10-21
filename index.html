@@ -15,7 +15,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-T9IM2zKxzFFXGbwGi993t5yDJGoKgRN76/ppmifUhzY='; style-src 'sha256-SnXVkTsC28eWXoe94rb+jTRgnSNGMK8ZDtFHMkPCSTQ='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-jFw9Qlp2JRIiBD9mUTGyrgnN4O/URBDUB3Yr4NsoPqU='; style-src 'sha256-twx2brIn5yhw4YWEWPft0C/bLSmAFtZFSdcnri6ysNQ='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Jefferson's Adventures: a cozy platformer starring Jefferson, an orange tabby. Six short adventures, no ads, no tracking, works offline.">
@@ -164,6 +164,10 @@
   /* in-game buttons */
   .hud-btns { position: absolute; top: max(1.6cqh, env(safe-area-inset-top)); right: max(1.4cqw, env(safe-area-inset-right)); display: none; gap: 1cqw; }
   body.playing .hud-btns { display: flex; }
+  /* full screen: the exit button stays reachable on every screen, above the menus */
+  body.fs-on .hud-btns { display: flex; z-index: 6; }
+  body.fs-on:not(.playing) #btn-mute, body.fs-on:not(.playing) #btn-pause, body:not(.fs-on) #btn-exitfs { display: none; }
+  #btn-exitfs svg { width: 55%; height: 55%; }
   .icon-btn {
     width: max(40px, 8cqh); height: max(40px, 8cqh); border-radius: 50%; border: 0; cursor: pointer;
     background: rgba(255, 248, 238, 0.85); color: var(--ink); font: inherit; font-weight: 900; font-size: max(16px, 3.6cqh);
@@ -220,6 +224,7 @@
   <canvas id="game" role="img" aria-label="Jefferson's Adventures game view" tabindex="-1"></canvas>
 
   <div class="hud-btns">
+    <button class="icon-btn" id="btn-exitfs" type="button" aria-label="Exit full screen" title="Exit full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"/></svg></button>
     <button class="icon-btn" id="btn-mute" type="button" aria-label="Mute sound" title="Sound (M)">♪</button>
     <button class="icon-btn" id="btn-pause" type="button" aria-label="Pause" title="Pause (Esc)">II</button>
   </div>
@@ -2887,7 +2892,14 @@ $("btn-fullscreen").addEventListener("click", async () => {
     }
   } catch { toast("Full screen isn't available here."); }
 });
-document.addEventListener("fullscreenchange", () => { syncSettings(); queueLayout(); });
+$("btn-exitfs").addEventListener("click", () => {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  if (mode === "play") canvas.focus({ preventScroll: true });
+});
+document.addEventListener("fullscreenchange", () => {
+  document.body.classList.toggle("fs-on", !!document.fullscreenElement);
+  syncSettings(); queueLayout();
+});
 let resetArmed = 0;
 $("btn-reset").addEventListener("click", () => {
   const b = $("btn-reset");
