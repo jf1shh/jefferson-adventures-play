@@ -95,6 +95,16 @@ drawings one day.
 Made by [@jf1shh](https://github.com/jf1shh) for Jefferson, the real cat. The code was written with
 the help of [Claude Code](https://claude.com/claude-code).
 
+## License
+
+The game's code, including its code-drawn art, is free software under the
+[GNU Affero General Public License v3.0 or later](LICENSE) (AGPL-3.0-or-later). You may use,
+study, change and share it. If you share or host a changed version, you must offer its source
+under the same license.
+
+Photos of Jefferson, the real cat, and any artwork made from them are not part of the code and
+are not licensed under the AGPL. All rights reserved.
+
 ## About this repository
 
 This repository only hosts the published game. A publish script updates it, so please don't
