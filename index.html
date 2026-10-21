@@ -15,7 +15,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-NJCDcoS4LIw/WfFBiRqY7gN7+96x3Zxkcp8X3E8yPXA='; style-src 'sha256-fBuwbkS6PL0A1bgXZkv0EgC5uvLQhC17iORZGoKGx4Y='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-pxGoFJhy88Lf2sBZk+Ub+vaFpKddevN0pixFl5r24/U='; style-src 'sha256-fBuwbkS6PL0A1bgXZkv0EgC5uvLQhC17iORZGoKGx4Y='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Jefferson's Adventures: a cozy platformer starring Jefferson, an orange tabby. Six short adventures, no ads, no tracking, works offline.">
@@ -1003,6 +1003,14 @@ const Sound = {
     this.timer = setInterval(() => this.schedule(), 50);
   },
   stopMusic() { clearInterval(this.timer); this.timer = 0; this.music = null; },
+  // Asleep: no timer and a suspended context. Waking restarts the timer but leaves the context
+  // suspended; the player's next tap or key (unlockAudio) brings the sound back.
+  sleep() { this.suspend(); clearInterval(this.timer); this.timer = 0; },
+  wake() {
+    if (!this.ctx || !this.music || this.timer) return;
+    this.music.next = this.ctx.currentTime + 0.1;
+    this.timer = setInterval(() => this.schedule(), 50);
+  },
   schedule() {
     const m = this.music;
     if (!m || !this.ctx) return;
@@ -2872,9 +2880,22 @@ const fillsScreen = () => screenReal() && Math.abs(innerWidth - screen.width) <=
 const hostFs = () => window.self !== window.top && !document.fullscreenElement && (fsMedia.matches || fillsScreen());
 const isFs = () => !!document.fullscreenElement || hostFs();
 async function leaveFullscreen() {
-  // Take the host's full screen over, then exit: with the iframe as the host's only full-screen element,
-  // exiting ours leaves the host's too.
-  if (hostFs()) await document.documentElement.requestFullscreen();
+  if (hostFs()) {
+    // Take the host's full screen over with a throwaway element, then remove it: removing the
+    // full-screen element fully exits, host included, in Chromium and Firefox. A plain
+    // exitFullscreen() only clears ours in Firefox and leaves the host full screen.
+    const tmp = document.createElement("div");
+    document.body.append(tmp);
+    try { await tmp.requestFullscreen(); } finally { tmp.remove(); }
+    // Nothing to await on removal; wait until the size and display-mode catch up.
+    await new Promise((done) => {
+      const check = () => { if (!isFs()) finish(); };
+      const finish = () => { clearTimeout(t); removeEventListener("resize", check); fsMedia.removeEventListener("change", check); done(); };
+      const t = setTimeout(finish, 1000);
+      addEventListener("resize", check); fsMedia.addEventListener("change", check); check();
+    });
+    return;
+  }
   if (document.fullscreenElement) await document.exitFullscreen();
 }
 function syncFs() {
@@ -2925,10 +2946,9 @@ $("btn-fullscreen").addEventListener("click", async () => {
 });
 $("btn-exitfs").addEventListener("click", async () => {
   try { await leaveFullscreen(); } catch { /* handled below */ }
-  // Still full screen: a cross-origin iframe can't script its host out of full screen (Firefox
-  // keeps the host's own full-screen flag set even after our take-over-and-exit trick clears
-  // ours — Chromium happens to collapse the whole chain, Firefox doesn't). Point at the control
-  // the player actually has: Esc on a keyboard, the browser's own chrome on touch.
+  // Still full screen: WebKit won't let a cross-origin iframe take its host out of full screen
+  // by any route. Point at the control the player actually has: Esc on a keyboard, the
+  // browser's own control on touch.
   if (isFs()) toast(usedTouch ? "Use Back or your browser's exit control to leave full screen." : "Press Esc to leave full screen.");
   if (mode === "play") canvas.focus({ preventScroll: true });
 });
@@ -2982,11 +3002,24 @@ addEventListener("keyup", e => {
   const a = KEYMAP[e.code];
   if (a && input.kb.delete(a)) refreshHeld();
 });
-addEventListener("blur", () => { clearInput(); pause(); });
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) { clearInput(); pause(); Sound.suspend(); }
-  else if (Sound.ctx) Sound.unlock();
-});
+// A call, a notification or a click outside the frame: pause and go quiet; nothing comes back
+// until the player taps.
+addEventListener("blur", () => { clearInput(); pause(); Sound.suspend(); });
+// Asleep: paused, silent, and the main loop stopped until we're back. Hidden tabs count, and so
+// does a zero-size frame: itch on phones collapses the iframe to 0 px tall when full screen ends
+// but keeps it loaded, and no visibilitychange comes.
+let asleep = false;
+function sleepCheck() {
+  const off = document.hidden || innerWidth < 2 || innerHeight < 2;
+  if (off === asleep) return;
+  asleep = off;
+  if (off) { clearInput(); pause(); Sound.sleep(); return; }
+  Sound.wake();
+  last = performance.now();
+  requestAnimationFrame(frame);
+}
+document.addEventListener("visibilitychange", sleepCheck);
+addEventListener("resize", sleepCheck);
 
 // ---------- Touch ----------
 function actAt(x, y) {
@@ -3124,6 +3157,7 @@ function render() {
   if (game && (mode === "play" || mode === "pause")) drawHUD(game, clock);
 }
 function frame(now) {
+  if (asleep) return; // sleepCheck() restarts the loop
   requestAnimationFrame(frame);
   let dt = (now - last) / 1000;
   last = now;
@@ -3169,6 +3203,7 @@ if (TEST) {
     get mode() { return mode; }, get game() { return game; }, get save() { return save; },
     get touchActive() { return touchActive(); }, get portrait() { return portraitLayout; },
     get audioState() { return Sound.ctx ? Sound.ctx.state : "none"; },
+    get asleep() { return asleep; }, get musicTimer() { return !!Sound.timer; },
     freeze(on) { frozen = !!on; },
     step(n, held = []) {
       const set = new Set(held);
@@ -3187,6 +3222,7 @@ syncFs(); // on phones itch full-screens the iframe before the game loads, so no
 syncSettings();
 show("title");
 requestAnimationFrame(t => { last = t; frame(t); });
+sleepCheck();
 </script>
 </body>
 </html>
