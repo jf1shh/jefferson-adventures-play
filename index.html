@@ -15,7 +15,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uRNvuJh+u5mblEMaHeOvrTo+/SbZGCRYtEHbgWUrcj8='; style-src 'sha256-uySsFHWz1UZz6CCqwlVY/k/eYGKBpDY0KqHnK9wG1pU='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-rzjfKFPVmHDgu+JId1bVJRLEWxgRkOX2C5CxPoZHQJs='; style-src 'sha256-uySsFHWz1UZz6CCqwlVY/k/eYGKBpDY0KqHnK9wG1pU='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Jefferson's Adventures: a cozy platformer starring Jefferson, an orange tabby. Six short adventures, no ads, no tracking, works offline.">
@@ -827,6 +827,19 @@ const OOPS_LINES = {
 };
 const PET_LINES = ["Hi! Hello. Hi. Pet me?", "Oh, hello! Hands, please.", "Chin scritches accepted here.", "Hi hi hi hi pet me pet me."];
 
+// Struggle hints: shown after a few rescues for the same reason/spot (see recordStruggle).
+const STRUGGLE_HINTS = {
+  vacuum: { text: "Swat the vacuum (Z) to stun it, then slip past while it's dazed.", touch: "Tap SWAT to stun the vacuum, then slip past while it's dazed." },
+  coyote: { text: "Swat the coyote (Z) to stun it, then slip past while it's dazed.", touch: "Tap SWAT to stun the coyote, then slip past while it's dazed." },
+  hot: { text: "The burner glows before it turns on. Cross right after it goes dark." },
+  steam: { text: "The steam puffs on and off. Go right after a puff ends." },
+  sprinkler: { text: "The sprinkler takes breaks. Run through right after it stops." },
+  water: { text: "Water never switches off. Run up to it and hold Jump to leap over.", touch: "Water never switches off. Run up to it and hold JUMP to leap over." },
+  bath: { text: "The bath never drains. Run up to it and hold Jump to leap over.", touch: "The bath never drains. Run up to it and hold JUMP to leap over." },
+  caught: { text: "When the humming stops, the human turns around. Hide behind something on the counter until the humming starts again." },
+  fall: { text: "Run first, then hold Jump for the long leap.", touch: "Run first, then hold JUMP for the long leap." },
+};
+
 // ---------- Audio (synthesised with Web Audio; no files, nothing fetched) ----------
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -1113,6 +1126,11 @@ function makeState(L, opts = {}) {
     particles: [], floaters: [],
     hint: "", hintT: 0, hintPri: 0, introT: opts.demo ? 0 : 5, fadeIn: 0,
     solidsNow: L.solids.slice(),
+    struggle: {
+      recent: [], reasonTotal: {}, shown: {}, assistShown: false, pending: null, pendingAssist: false,
+      stuckT: 0, furthestX: L.start.x, goalHave: 0, treatsGot: 0, starsGot: 0, bonusGot: false, itemGot: false, cp: -1,
+      arrowT: 0, arrowX: 0, arrowY: 0,
+    },
   };
   s.camX = clamp(L.start.x - W / 2 + 60, 0, L.width - W);
   if (L.height > H) s.camY = clamp(L.start.y - H * 0.55, 0, L.height - H);
@@ -1329,6 +1347,64 @@ function goalRemainingText(s) {
   }
 }
 
+// Nearest not-yet-done goal target, for the stuck hint and its pointer arrow.
+function struggleTarget(s) {
+  const L = s.L, cx = s.cat.x + s.cat.w / 2, cy = s.cat.y + s.cat.h / 2;
+  if (L.goal.type === "reach" || goalDone(s)) return { x: L.nap.x + L.nap.w / 2, y: L.nap.y - 10, label: "nap spot" };
+  const nearest = (items, label) => {
+    let best = null, bd = Infinity;
+    for (const it of items) { const d = Math.hypot(it.x - cx, it.y - cy); if (d < bd) { bd = d; best = it; } }
+    return best ? { x: best.x, y: best.y, label } : null;
+  };
+  switch (L.goal.type) {
+    case "treats": return nearest(s.treats.filter(t => !t.got), "treat");
+    case "mugs": return nearest(s.knock.filter(k => k.kind === "mug" && !k.tipped), "mug");
+    case "pumpkins": return nearest(s.knock.filter(k => k.kind === "pumpkin" && !k.tipped), "pumpkin");
+    case "item": return s.item && !s.item.got ? { x: s.item.x, y: s.item.y, label: "treat" } : null;
+    case "mice": return nearest(s.mice.filter(m => !m.caught), "mouse");
+    case "stars": return nearest(s.stars.filter(t => !t.got), "golden treat");
+    default: return null;
+  }
+}
+function dirPhrase(dx, dy) {
+  const TH = 40;
+  const horiz = Math.abs(dx) > TH ? (dx < 0 ? "left" : "right") : null;
+  const vert = Math.abs(dy) > TH ? (dy < 0 ? "up" : "down") : null;
+  if (vert && horiz) return `${vert} and to the ${horiz}`;
+  if (horiz) return `to the ${horiz}`;
+  if (vert) return vert;
+  return "close by";
+}
+function showStuckHint(s) {
+  const tgt = struggleTarget(s);
+  if (!tgt) return;
+  const cx = s.cat.x + s.cat.w / 2, cy = s.cat.y + s.cat.h / 2;
+  const phrase = dirPhrase(tgt.x - cx, tgt.y - cy);
+  const text = tgt.label === "nap spot" ? `Hmm. The nap spot is ${phrase}.` : `Hmm. The next ${tgt.label} is ${phrase}.`;
+  say(s, text, 5, 1); announce(text);
+  const st = s.struggle;
+  st.arrowX = tgt.x; st.arrowY = tgt.y; st.arrowT = 6;
+}
+// Progress = goal progress, a pickup, a new checkpoint, or 200px of new furthest reach.
+// Resets the rescue-streak window and the stuck timer; 45s of none triggers a stuck hint.
+function updateStruggle(s, dt, live) {
+  if (s.sim || s.demo) return;
+  const st = s.struggle, cx = s.cat.x + s.cat.w / 2;
+  const gp = goalProgress(s), treatsGot = s.treats.filter(t => t.got).length, starsGot = s.stars.filter(t => t.got).length;
+  const bonusGot = s.bonus ? s.bonus.got : false, itemGot = s.item ? s.item.got : false;
+  let progressed = gp.have > st.goalHave || treatsGot > st.treatsGot || starsGot > st.starsGot ||
+    (bonusGot && !st.bonusGot) || (itemGot && !st.itemGot) || s.cp > st.cp;
+  if (cx > st.furthestX + 200) { st.furthestX = cx; progressed = true; }
+  st.goalHave = gp.have; st.treatsGot = treatsGot; st.starsGot = starsGot;
+  st.bonusGot = bonusGot; st.itemGot = itemGot; st.cp = s.cp;
+  if (progressed) { st.stuckT = 0; st.recent = []; }
+  else if (live && !s.done) {
+    st.stuckT += dt;
+    if (st.stuckT >= 45) { st.stuckT = 0; showStuckHint(s); }
+  }
+  st.arrowT = Math.max(0, st.arrowT - dt);
+}
+
 function say(s, text, dur = 2.4, pri = 1) {
   if (s.sim) return;
   if (s.hintT > 0 && pri < s.hintPri) return;
@@ -1347,6 +1423,7 @@ function oops(s, reason) {
   c.vx = 0; if (reason !== "fall") c.vy = 0;
   s.oops++;
   if (s.sim) return;
+  recordStruggle(s, reason, c.x + c.w / 2);
   say(s, OOPS_LINES[reason] || "Oops!", 2.6, 2);
   Sound.play(reason === "caught" ? "caught" : reason === "water" || reason === "bath" || reason === "sprinkler" ? "splash" : "oops");
   vibrate(50);
@@ -1359,6 +1436,36 @@ function respawnCat(s) {
   c.x = s.respawn.x; c.y = s.respawn.y; c.vx = 0; c.vy = 0; c.flop = 0; c.climb = null;
   c.invuln = 1.6; c.stamina = 1; c.grounded = false; c.facing = 1;
   s.fadeIn = 0.45;
+  if (s.sim || s.demo) return;
+  const st = s.struggle;
+  if (st.pending) {
+    const h = STRUGGLE_HINTS[st.pending], text = touchActive() && h.touch ? h.touch : h.text;
+    say(s, text, 5, 2); announce(text);
+    st.pending = null;
+  }
+  if (st.pendingAssist) {
+    const text = "Tough one! Settings → Assist mode gives endless climbing and calmer hazards.";
+    say(s, text, 5, 2); announce(text);
+    st.pendingAssist = false;
+  }
+}
+
+// Tracks rescue streaks (same reason 3x, or 3x near the same spot) since the last progress
+// event, and the one-time "try Assist mode" nudge at 6 rescues. Firing is deferred to the
+// next respawn so the rescue line gets its moment first.
+function recordStruggle(s, reason, x) {
+  if (s.sim || s.demo) return;
+  const st = s.struggle;
+  st.recent.push({ reason, x });
+  const sameReason = st.recent.filter(r => r.reason === reason).length;
+  const sameSpot = st.recent.filter(r => Math.abs(r.x - x) <= 300).length;
+  st.reasonTotal[reason] = (st.reasonTotal[reason] || 0) + 1;
+  if ((sameReason >= 3 || sameSpot >= 3) && STRUGGLE_HINTS[reason] &&
+      st.reasonTotal[reason] - (st.shown[reason] || 0) >= 3) {
+    st.shown[reason] = st.reasonTotal[reason];
+    st.pending = reason;
+  }
+  if (!assist() && !st.assistShown && s.oops >= 6) { st.assistShown = true; st.pendingAssist = true; }
 }
 
 function updateTimed(s) {
@@ -1681,6 +1788,7 @@ function updateWorld(s, dt, io) {
     s.floaters = s.floaters.filter(f => f.t < f.life);
     s.shake = Math.max(0, s.shake - dt * 30);
     updateCamera(s, dt);
+    updateStruggle(s, dt, live);
   }
 }
 
@@ -2337,6 +2445,20 @@ function drawNapSpot(s, t) {
   if (ready && !s.cat.nap) { ctx.fillStyle = "#fff6c4"; ctx.font = `900 22px ${FONT}`; ctx.textAlign = "center"; ctx.fillText("z", n.x + n.w / 2 + Math.sin(t * 2) * 6, n.y - 50 - (t * 14) % 26); }
 }
 
+// A soft pointer beside Jefferson toward the stuck-hint target; static when reducedMotion.
+function drawStruggleArrow(s, t) {
+  const st = s.struggle, c = s.cat, cx = c.x + c.w / 2, cy = c.y + c.h / 2;
+  const dx = st.arrowX - cx, dy = st.arrowY - cy, ang = Math.atan2(dy, dx);
+  const pulse = reducedMotion() ? 1 : 0.85 + Math.sin(t * 6) * 0.15;
+  const r = 52 * pulse, ax = cx + Math.cos(ang) * r, ay = cy + Math.sin(ang) * r - 20;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, st.arrowT);
+  ctx.translate(ax, ay); ctx.rotate(ang);
+  ctx.fillStyle = "#ffd34d"; ctx.strokeStyle = "#5a3a1a"; ctx.lineWidth = 3; ctx.lineJoin = "round";
+  ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-9, -13); ctx.lineTo(-4, 0); ctx.lineTo(-9, 13); ctx.closePath(); ctx.stroke(); ctx.fill();
+  ctx.restore();
+}
+
 // ---------- Drawing: Jefferson (code-drawn; poses for walk, run, jump, climb, pounce, flop, nap) ----------
 function drawCat(s, t) {
   const c = s.cat, P = PALETTE;
@@ -2482,6 +2604,7 @@ function drawWorld(s, t) {
   for (const v of s.vacs) if (v.x > s.camX - 80 && v.x < s.camX + W + 20) drawVac(v, s, t);
   for (const y of s.coyotes) if (y.x > s.camX - 80 && y.x < s.camX + W + 20) drawCoyote(y, s, t);
   drawCat(s, t);
+  if (s.struggle.arrowT > 0) drawStruggleArrow(s, t);
   for (const p of s.particles) {
     ctx.globalAlpha = Math.max(0, 1 - p.t / p.life);
     if (p.kind === "feather") ell(p.x, p.y, p.r * 1.8, p.r * 0.7, p.color, Math.sin(p.t * 6));
