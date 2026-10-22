@@ -15,7 +15,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-pxGoFJhy88Lf2sBZk+Ub+vaFpKddevN0pixFl5r24/U='; style-src 'sha256-fBuwbkS6PL0A1bgXZkv0EgC5uvLQhC17iORZGoKGx4Y='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uRNvuJh+u5mblEMaHeOvrTo+/SbZGCRYtEHbgWUrcj8='; style-src 'sha256-uySsFHWz1UZz6CCqwlVY/k/eYGKBpDY0KqHnK9wG1pU='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Jefferson's Adventures: a cozy platformer starring Jefferson, an orange tabby. Six short adventures, no ads, no tracking, works offline.">
@@ -168,6 +168,8 @@
   body.fs-on .hud-btns { display: flex; z-index: 6; }
   body.fs-on:not(.playing) #btn-mute, body.fs-on:not(.playing) #btn-pause, body:not(.fs-on) #btn-exitfs { display: none; }
   #btn-exitfs svg { width: 55%; height: 55%; }
+  #btn-exitfs .ico-close, body.itch-phone #btn-exitfs .ico-exitfs { display: none; }
+  body.itch-phone #btn-exitfs .ico-close { display: inline; }
   .icon-btn {
     width: max(40px, 8cqh); height: max(40px, 8cqh); border-radius: 50%; border: 0; cursor: pointer;
     background: rgba(255, 248, 238, 0.85); color: var(--ink); font: inherit; font-weight: 900; font-size: max(16px, 3.6cqh);
@@ -184,6 +186,12 @@
   .pad.move { grid-template-columns: repeat(3, var(--tb)); grid-template-rows: var(--tb) calc(var(--tb) * 0.62); }
   .pad.act { grid-template-columns: repeat(2, var(--tb)); grid-template-rows: calc(var(--tb) * 0.8) var(--tb); }
   #touch { --tb: clamp(56px, 15vmin, 86px); }
+  /* Portrait has spare height below the game box (padReserve reserves it), so give DOWN and
+     JUMP taller rows and more row-gap to cut mis-taps. Only row-gap grows: column-gap stays at
+     the base 10px because it is part of the width budget --tb is sized against, below. */
+  body.portrait.touch-on .pad { row-gap: 16px; }
+  body.portrait.touch-on .pad.move { grid-template-rows: var(--tb) calc(var(--tb) * 0.78); }
+  body.portrait.touch-on .pad.act { grid-template-rows: calc(var(--tb) * 0.8) calc(var(--tb) * 1.15); }
   .tbtn {
     border-radius: 22px; border: 2px solid rgba(255, 255, 255, 0.55); background: rgba(43, 34, 51, 0.32);
     color: #fff; font: inherit; font-weight: 900; font-size: calc(var(--tb) * 0.34); display: grid; place-items: center;
@@ -199,11 +207,16 @@
   [data-act="swat"] { grid-column: 2; grid-row: 1; }
   [data-act="jump"] { grid-column: 1 / span 2; grid-row: 2; border-radius: 999px; font-size: calc(var(--tb) * 0.4); }
   @media (orientation: landscape) and (max-height: 440px) { #touch { --tb: clamp(50px, 14vh, 72px); } }
-  body.portrait.touch-on #touch { --tb: clamp(48px, calc((100vw - 80px) / 5.3), 86px); }
-  /* Folded-phone cover screens (~280px): keep 48px pads, tighten the spacing so JUMP stays on screen. */
-  @media (max-width: 300px) {
-    #touch { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
-    .pad { gap: 6px; }
+  /* 5 pad columns (3 move + 2 act) at --tb each, 2x14px side padding, and the 10px column-gaps
+     (2 in the move pad, 1 in the act pad) must fit 100vw; -62 and /5 are tuned against that
+     with a few px of margin at every width, down to the --tb floor below. */
+  body.portrait.touch-on #touch { --tb: clamp(50px, calc((100vw - 62px) / 5), 104px); }
+  /* Narrow/folded-phone widths (~280-340px, covers cover screens): the 14px padding and 10px
+     column-gaps above don't leave room for the 50px floor, so tighten both (column-gap only,
+     not the row-gap above) until there's slack again. */
+  @media (max-width: 340px) {
+    body.portrait.touch-on #touch { padding-left: max(4px, env(safe-area-inset-left)); padding-right: max(4px, env(safe-area-inset-right)); }
+    body.portrait.touch-on .pad { column-gap: 4px; }
   }
 
   .toast {
@@ -229,7 +242,7 @@
   <canvas id="game" role="img" aria-label="Jefferson's Adventures game view" tabindex="-1"></canvas>
 
   <div class="hud-btns">
-    <button class="icon-btn" id="btn-exitfs" type="button" aria-label="Exit full screen" title="Exit full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"/></svg></button>
+    <button class="icon-btn" id="btn-exitfs" type="button" aria-label="Exit full screen" title="Exit full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ico-exitfs" d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"/><path class="ico-close" d="M6 6l12 12M18 6L6 18"/></svg></button>
     <button class="icon-btn" id="btn-mute" type="button" aria-label="Mute sound" title="Sound (M)">♪</button>
     <button class="icon-btn" id="btn-pause" type="button" aria-label="Pause" title="Pause (Esc)">II</button>
   </div>
@@ -557,7 +570,7 @@ const LEVELS = [
       { x: 2560, y: 390, w: 240 },
       { x: 2860, y: 300, w: 160, look: "sill" },
     ],
-    climbs: [],
+    climbs: [{ x: 0, y: 180, w: 60, h: 300, look: "broom" }],
     treats: [[300, 305], [460, 305], [870, 375], [1060, 305], [1420, 305], [1610, 455], [1800, 305], [2200, 305], [2680, 365], [3150, 455]],
     stars: [[130, 155], [1240, 145], [1975, 165]],
     bonus: { x: 290, y: 170, kind: "hairtie", name: "a hair tie" },
@@ -785,7 +798,7 @@ const LEVELS = [
       { type: "steam", x: 2950, y: 300, w: 40, h: 80, on: 1.4, off: 2.0, phase: 1.0 },
       { type: "steam", x: 3900, y: 240, w: 40, h: 80, on: 1.2, off: 2.2, phase: 0.4 },
     ],
-    treats: [[300, 335], [560, 225], [820, 280], [1300, 305], [1690, 240], [2050, 275], [2400, 275], [2630, 305], [3050, 355], [3470, 260], [3800, 295], [4000, 295], [4350, 295]],
+    treats: [[300, 335], [560, 225], [820, 160], [1300, 305], [1690, 110], [2050, 275], [2400, 275], [2630, 305], [3050, 355], [3470, 160], [3800, 295], [4000, 295], [4350, 295]],
     stars: [[1420, 90], [2190, 150], [3190, 135]],
     bonus: { x: 560, y: 175, kind: "crown", name: "a paper crown" },
     knock: [{ x: 2480, y: 300, kind: "pot" }, { x: 4470, y: 320, kind: "pot" }],
@@ -1328,7 +1341,8 @@ function floater(s, x, y, text, color = "#fff") {
 
 function oops(s, reason) {
   const c = s.cat;
-  if (c.flop > 0 || c.nap > 0 || c.invuln > 0 || s.done) return;
+  // Respawn invulnerability guards against hazards and enemies, not the void: a fall flops at once.
+  if (c.flop > 0 || c.nap > 0 || (c.invuln > 0 && reason !== "fall") || s.done) return;
   c.flop = 0.001; c.flopReason = reason; c.climb = null; c.pounce = 0; c.swat = 0;
   c.vx = 0; if (reason !== "fall") c.vy = 0;
   s.oops++;
@@ -2057,6 +2071,12 @@ function drawClimb(s, z, t) {
     case "post": rect(x + 4, y - 10, w - 8, h + 10, "#9b6d44"); rect(x + 4, y - 10, w - 8, 6, "#b5895c"); ctx.fillStyle = "#86603b"; for (let yy = y + 10; yy < y + h; yy += 16) ctx.fillRect(x + 6, yy, w - 12, 3); break;
     case "antenna": ctx.strokeStyle = "#9aa0b0"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 4, y + h); ctx.lineTo(x + w / 2, y); ctx.lineTo(x + w - 4, y + h); ctx.stroke(); for (let yy = y + 30; yy < y + h; yy += 30) { ctx.beginPath(); ctx.moveTo(x + 6, yy); ctx.lineTo(x + w - 6, yy); ctx.stroke(); } break;
     case "pipe": rect(x + 8, y - 6, w - 16, h + 6, "#8a9aa6"); for (let yy = y + 10; yy < y + h; yy += 50) rect(x + 4, yy, w - 8, 6, "#6b7a86"); break;
+    case "broom": {
+      ctx.strokeStyle = "#8a5d39"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x + 10, y + h); ctx.lineTo(x + w - 10, y); ctx.stroke();
+      ctx.fillStyle = "#d9a94a";
+      for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(x + w - 10, y); ctx.lineTo(x + w - 20 + i * 3, y + 34); ctx.lineTo(x + w - 4 + i * 3, y + 34); ctx.fill(); }
+      break;
+    }
   }
 }
 
@@ -2879,6 +2899,12 @@ const screenReal = () => screen.width + 2 >= outerWidth && screen.height + 2 >= 
 const fillsScreen = () => screenReal() && Math.abs(innerWidth - screen.width) <= 2 && Math.abs(innerHeight - screen.height) <= 2;
 const hostFs = () => window.self !== window.top && !document.fullscreenElement && (fsMedia.matches || fillsScreen());
 const isFs = () => !!document.fullscreenElement || hostFs();
+// itch on phones always runs the game in its own full screen, and leaving it folds the game away
+// behind itch's "Restore game" button: there is no windowed view. So there the exit button closes
+// the game (paused, to resume on Restore) and the Settings full-screen row is hidden.
+const onItch = /(^|\.)itch\.zone$/.test(location.hostname) || (TEST && /[?&]itch(?:[=&]|$)/.test(location.search));
+const touchDevice = matchMedia("(pointer: coarse)").matches && !matchMedia("(pointer: fine)").matches;
+const itchPhone = () => onItch && touchDevice && isFs();
 async function leaveFullscreen() {
   if (hostFs()) {
     // Take the host's full screen over with a throwaway element, then remove it: removing the
@@ -2899,8 +2925,12 @@ async function leaveFullscreen() {
   if (document.fullscreenElement) await document.exitFullscreen();
 }
 function syncFs() {
-  if (document.body.classList.contains("fs-on") === isFs()) return;
-  document.body.classList.toggle("fs-on", isFs());
+  const cl = document.body.classList;
+  if (cl.contains("fs-on") === isFs() && cl.contains("itch-phone") === itchPhone()) return;
+  cl.toggle("fs-on", isFs());
+  cl.toggle("itch-phone", itchPhone());
+  const b = $("btn-exitfs"), label = itchPhone() ? "Close game" : "Exit full screen";
+  b.setAttribute("aria-label", label); b.title = label;
   syncSettings(); queueLayout();
 }
 function syncSettings() {
@@ -2908,7 +2938,7 @@ function syncSettings() {
   setToggle("set-sfx", st.sfx); setToggle("set-music", st.music);
   setToggle("set-assist", st.assist); setToggle("set-haptics", st.haptics);
   setToggle("btn-fullscreen", isFs());
-  $("btn-fullscreen").hidden = $("fs-label").hidden = !fsSupported;
+  $("btn-fullscreen").hidden = $("fs-label").hidden = !fsSupported || itchPhone();
   $("set-volume").value = String(st.volume);
   $("set-motion").value = st.motion;
   $("set-touch").value = st.touch;
@@ -2945,6 +2975,7 @@ $("btn-fullscreen").addEventListener("click", async () => {
   } catch { toast("Full screen isn't available here."); }
 });
 $("btn-exitfs").addEventListener("click", async () => {
+  if (itchPhone()) pause(); // back on Restore, it waits paused
   try { await leaveFullscreen(); } catch { /* handled below */ }
   // Still full screen: WebKit won't let a cross-origin iframe take its host out of full screen
   // by any route. Point at the control the player actually has: Esc on a keyboard, the
