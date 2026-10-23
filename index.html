@@ -15,10 +15,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-r8206BDQqXFsvr1+tp0nJ22k8ThgurBBJgSqyHeSj1I='; style-src 'sha256-uySsFHWz1UZz6CCqwlVY/k/eYGKBpDY0KqHnK9wG1pU='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-raCiXT/2acIt7EzAGei0EZHGbbvRbrTLir6RgDXYhf4='; style-src 'sha256-/HgS4XfnJxmeJFYnNHex6uHRLB0ux6AEnJrAKjjHGSs='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Jefferson's Adventures: a cozy platformer starring Jefferson, an orange tabby. Six short adventures, no ads, no tracking, works offline.">
+<meta name="description" content="Jefferson's Adventures: a cozy platformer starring Jefferson, an orange tabby. Six short adventures plus a Halloween one, no ads, no tracking, works offline.">
 <meta name="theme-color" content="#2b2233">
 <meta name="color-scheme" content="light">
 <meta name="mobile-web-app-capable" content="yes">
@@ -105,8 +105,25 @@
   .title-buttons { display: flex; gap: 0.7em; flex-wrap: wrap; justify-content: center; }
   .title-buttons .btn { font-size: 1.1em; }
   .title-note { color: #fff; font-size: 0.75em; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); text-align: center; }
+  #spooky-tag {
+    color: #ffd34d; font-weight: 800; font-size: 0.8em; transform: rotate(-4deg); margin: 0 0 0.5em; text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+  .paper-bat {
+    position: absolute; width: 2.4em; height: 1.4em; pointer-events: none;
+    background: #2b2233;
+    clip-path: polygon(50% 40%, 30% 0%, 38% 45%, 10% 20%, 20% 55%, 0% 55%, 35% 80%, 50% 100%, 65% 80%, 100% 55%, 80% 55%, 90% 20%, 62% 45%, 70% 0%);
+    animation: batsway 3.2s ease-in-out infinite;
+  }
+  @keyframes batsway { 0%, 100% { transform: rotate(-6deg) translateY(0); } 50% { transform: rotate(6deg) translateY(4px); } }
+  @media (prefers-reduced-motion: reduce) { .paper-bat { animation: none; } }
+  body.motion-reduced .paper-bat { animation: none; }
+  .pb1 { left: 8%; top: 12%; } .pb2 { left: 20%; top: 22%; } .pb3 { left: 78%; top: 14%; }
+  .pb4 { left: 88%; top: 26%; } .pb5 { left: 4%; top: 34%; }
 
   /* adventure select */
+  #level-grid h3 { text-align: left; margin: 0.9em 0 0.3em; color: var(--accent-d); font-size: 0.95em; letter-spacing: 0.04em; }
+  #level-grid h3:first-child { margin-top: 0.4em; }
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6cqh 1.6cqw; margin-top: 0.6em; }
   .card {
     font: inherit; text-align: left; border: 0; cursor: pointer; border-radius: max(10px, 2cqh);
@@ -248,8 +265,14 @@
   </div>
 
   <section class="screen clear" id="scr-title" role="dialog" aria-label="Title">
+    <div class="paper-bat pb1" hidden></div>
+    <div class="paper-bat pb2" hidden></div>
+    <div class="paper-bat pb3" hidden></div>
+    <div class="paper-bat pb4" hidden></div>
+    <div class="paper-bat pb5" hidden></div>
     <h1 class="logo">Jefferson's<br>Adventures<small>A COZY CAT PLATFORMER</small><span class="starring">starring Jefferson, a derpy, very social orange tabby</span></h1>
     <div>
+      <p id="spooky-tag" hidden>🎃 Spooky season!</p>
       <div class="title-buttons">
         <button class="btn" type="button" data-go="continue" id="btn-continue">Continue</button>
         <button class="btn" type="button" data-go="select" id="btn-play">Play</button>
@@ -265,7 +288,7 @@
     <div class="panel wide">
       <h2>Choose an adventure</h2>
       <p class="totals" id="select-totals"></p>
-      <div class="grid" id="level-grid"></div>
+      <div id="level-grid"></div>
       <div class="row"><button class="btn ghost" type="button" data-go="title">Back</button></div>
     </div>
   </section>
@@ -307,6 +330,7 @@
         <label for="set-music">Music</label><button class="toggle" type="button" id="set-music" aria-pressed="true">On</button>
         <label for="set-volume">Volume</label><input type="range" id="set-volume" min="0" max="100" step="5" value="70">
         <label for="set-assist">Assist mode<br><small class="muted">endless climbing, calmer hazards</small></label><button class="toggle" type="button" id="set-assist" aria-pressed="false">Off</button>
+        <label for="set-hat" id="hat-label" hidden>Witch hat (cosmetic)</label><button class="toggle" type="button" id="set-hat" aria-pressed="false" hidden>Off</button>
         <label for="set-motion">Motion</label>
         <select id="set-motion"><option value="auto">Match device</option><option value="full">Full</option><option value="reduced">Reduced</option></select>
         <label for="set-touch">Touch controls</label>
@@ -420,30 +444,33 @@ const PALETTE = {
 
 // ---------- Save (must work when storage is blocked; never trusts what it reads) ----------
 const SAVE_KEY = "jefferson-adventures.v1";
-const LEVEL_COUNT = 6;
 function defaultSave() {
   return {
-    v: 2, levels: {}, lastLevel: 1, chaos: 0, mice: 0,
-    settings: { sfx: true, music: true, volume: 70, assist: false, motion: "auto", touch: "auto", haptics: true },
+    v: 3, levels: {}, lastLevel: 1, chaos: 0, mice: 0,
+    stats: { mugs: 0, mice: 0, pets: 0, bonks: 0, oops: 0, naps: 0, fireflies: 0, boxes: 0, blinks: 0 },
+    stickers: {}, keys: {},
+    settings: { sfx: true, music: true, volume: 70, assist: false, motion: "auto", touch: "auto", haptics: true, hat: false },
   };
 }
 const num = (v, lo, hi, d) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
 const bool = (v, d) => (typeof v === "boolean" ? v : d);
 const pick = (v, list, d) => (list.includes(v) ? v : d);
+const UNSAFE_KEY = k => k === "__proto__" || k === "constructor" || k === "prototype";
 function sanitizeSave(raw) {
   const s = defaultSave();
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return s;
   const src = raw.levels && typeof raw.levels === "object" && !Array.isArray(raw.levels) ? raw.levels : {};
-  for (let i = 1; i <= LEVEL_COUNT; i++) {
-    let r = Object.prototype.hasOwnProperty.call(src, String(i)) ? src[String(i)] : null;
+  for (const L of LEVELS) {
+    const id = L.id;
+    let r = Object.prototype.hasOwnProperty.call(src, String(id)) ? src[String(id)] : null;
     // M1 saves used { level1: { best, stars (count), done } }
-    if (!r && i === 1 && raw.level1 && typeof raw.level1 === "object") {
+    if (!r && id === 1 && raw.level1 && typeof raw.level1 === "object") {
       const n = num(raw.level1.stars, 0, 3, 0) | 0;
       r = { done: raw.level1.done, best: raw.level1.best, stars: (1 << n) - 1 };
     }
     if (!r || typeof r !== "object") continue;
     const best = num(r.best, 0.5, 86400, null);
-    s.levels[i] = {
+    s.levels[id] = {
       done: bool(r.done, false),
       best,
       stars: num(r.stars, 0, 7, 0) | 0,       // bitmask: union of golden treats ever found
@@ -451,9 +478,15 @@ function sanitizeSave(raw) {
       oops: num(r.oops, 0, 1e6, 0) | 0,
     };
   }
-  s.lastLevel = num(raw.lastLevel, 1, LEVEL_COUNT, 1) | 0;
+  s.lastLevel = num(raw.lastLevel, 1, CHAPTER1.length, 1) | 0;
   s.chaos = num(raw.chaos, 0, 1e7, 0) | 0;
   s.mice = num(raw.mice, 0, 1e7, 0) | 0;
+  const statsSrc = raw.stats && typeof raw.stats === "object" && !Array.isArray(raw.stats) ? raw.stats : {};
+  for (const k of Object.keys(s.stats)) s.stats[k] = num(statsSrc[k], 0, 1e7, 0) | 0;
+  const stickersSrc = raw.stickers && typeof raw.stickers === "object" && !Array.isArray(raw.stickers) ? raw.stickers : {};
+  for (const k of Object.keys(stickersSrc)) if (!UNSAFE_KEY(k) && typeof stickersSrc[k] === "boolean") s.stickers[k] = stickersSrc[k];
+  const keysSrc = raw.keys && typeof raw.keys === "object" && !Array.isArray(raw.keys) ? raw.keys : {};
+  for (const k of Object.keys(keysSrc)) if (!UNSAFE_KEY(k) && typeof keysSrc[k] === "string") s.keys[k] = keysSrc[k];
   const st = raw.settings && typeof raw.settings === "object" ? raw.settings : {};
   s.settings = {
     sfx: bool(st.sfx, true),
@@ -463,6 +496,7 @@ function sanitizeSave(raw) {
     motion: pick(st.motion, ["auto", "full", "reduced"], "auto"),
     touch: pick(st.touch, ["auto", "on", "off"], "auto"),
     haptics: bool(st.haptics, true),
+    hat: bool(st.hat, false) && !!(s.levels.halloween && s.levels.halloween.bonus),
   };
   return s;
 }
@@ -482,16 +516,12 @@ function probeStorage() {
   try { const k = SAVE_KEY + ".probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); return true; }
   catch { return false; }
 }
-const save = loadSave();
-const levelSave = i => save.levels[i] || { done: false, best: null, stars: 0, bonus: false, oops: 0 };
-const isUnlocked = i => i === 1 || !!levelSave(i - 1).done;
-
 // ---------- Levels ----------
 // Units are pixels. Platforms are one-way (land from above, jump up through). Solids block
 // from every side. Climbs are zones Jefferson can grip (hold Jump). Points are [x, y].
 const LEVELS = [
   {
-    id: 1, name: "Morning Stretch", setting: "Living room", theme: "living",
+    id: 1, chapter: 1, name: "Morning Stretch", setting: "Living room", theme: "living",
     width: 3000, height: 540, floorY: 480, start: { x: 90, y: 440 }, parTime: 45,
     goal: { type: "treats", n: 5 },
     goalText: "Collect 5 treats, then nap in the sunbeam.",
@@ -537,7 +567,7 @@ const LEVELS = [
     lines: ["I meant to do that.", "The sunbeam was exactly where I left it. I checked.", "Treats: acceptable. Nap: excellent.", "Morning productivity achieved. Back to bed.", "I found my stuffed fish. We are never parting again."],
   },
   {
-    id: 2, name: "The Mug Situation", setting: "Kitchen counter", theme: "kitchen",
+    id: 2, chapter: 1, name: "The Mug Situation", setting: "Kitchen counter", theme: "kitchen",
     width: 3400, height: 540, floorY: 480, start: { x: 800, y: 440 }, parTime: 70,
     goal: { type: "mugs", n: 3 },
     goalText: "Knock 3 mugs onto the floor. Don't get caught on the counter!",
@@ -592,7 +622,7 @@ const LEVELS = [
     lines: ["Gravity test complete. Results: bonk.", "Those mugs were too close to the edge. I fixed that.", "I regret nothing. Except being seen. Briefly.", "Oops, did my paw do that? My paw does what it wants."],
   },
   {
-    id: 3, name: "Curtain Climb", setting: "Bedroom", theme: "bedroom",
+    id: 3, chapter: 1, name: "Curtain Climb", setting: "Bedroom", theme: "bedroom",
     width: 1880, height: 1200, floorY: 1140, start: { x: 40, y: 1100 }, parTime: 60,
     goal: { type: "item", n: 1, x: 1080, y: 100, name: "the top-shelf treat" },
     goalText: "Climb up to the top-shelf treat, then nap on the bed.",
@@ -641,7 +671,7 @@ const LEVELS = [
     lines: ["The rumours were true. The treat was delicious.", "Curtains are just ladders the humans hung for me.", "I climbed it because it was there. And so was the treat.", "The kid gave pets. I have decided to stay forever."],
   },
   {
-    id: 4, name: "Vacuum Day", setting: "Hallway", theme: "hallway",
+    id: 4, chapter: 1, name: "Vacuum Day", setting: "Hallway", theme: "hallway",
     width: 4300, height: 540, floorY: 480, start: { x: 80, y: 440 }, parTime: 75,
     goal: { type: "reach", n: 0 },
     goalText: "Dodge the vacuums and get to the laundry basket.",
@@ -696,7 +726,7 @@ const LEVELS = [
     lines: ["The vacuum fears me now. Probably.", "Warm laundry. Victory smells like fabric softener.", "I was never scared. That was a strategic sprint.", "The neighbor gave scritches. Vacuum Day is now Best Day."],
   },
   {
-    id: 5, name: "Mouse Patrol", setting: "Backyard at dusk", theme: "garden",
+    id: 5, chapter: 1, name: "Mouse Patrol", setting: "Backyard at dusk", theme: "garden",
     width: 4700, height: 540, floorY: 500, start: { x: 10, y: 460 }, parTime: 80,
     goal: { type: "mice", n: 3 },
     goalText: "Catch 3 mice in the yard, then nap on the shed roof. The fence is coyote-proof.",
@@ -761,7 +791,7 @@ const LEVELS = [
     lines: ["Three mice, zero regrets. I am a professional.", "The coyote and I have an understanding: I win.", "Fence patrol complete. Shed roof: claimed.", "The bird got away. The mice did not. Priorities."],
   },
   {
-    id: 6, name: "Roof Nap", setting: "Roof at sunset", theme: "roof",
+    id: 6, chapter: 1, name: "Roof Nap", setting: "Roof at sunset", theme: "roof",
     width: 4500, height: 540, floorY: null, start: { x: 60, y: 320 }, parTime: 90,
     goal: { type: "stars", n: 3 },
     goalText: "Find all 3 golden treats, then nap on the warm chimney.",
@@ -812,7 +842,59 @@ const LEVELS = [
     ],
     lines: ["Three golden treats. One warm chimney. Zero regrets.", "The whole city is my nap spot now.", "Goodnight, roof. Goodnight, moon. Goodnight, treats.", "Somewhere down there, the coyote is howling at the moon. Rude, but fine, it can't climb."],
   },
+  {
+    id: "halloween", chapter: "seasonal", name: "Spooky Season", setting: "Porch and living room, Halloween night", theme: "halloween",
+    width: 3000, height: 540, floorY: 480, start: { x: 90, y: 440 }, parTime: 60,
+    goal: { type: "pumpkins", n: 3 },
+    goalText: "Knock 3 tiny pumpkins off the porch rail, then nap in the costume box.",
+    intro: "Halloween night. The rail has pumpkins just begging for a bonk. Trick or treat, I suppose.",
+    music: { bpm: 100, root: 57, prog: [0, 5, 3, 4], mood: "minor" },
+    decor: [
+      { type: "bats", x: 300, y: 130, w: 500, h: 30 },
+      { type: "bats", x: 1750, y: 130, w: 600, h: 30 },
+      { type: "door", x: 1400, y: 250, w: 150, h: 230 },
+      { type: "couch", x: 1900, y: 380, w: 300, h: 100 },
+      { type: "lamp", x: 2250, y: 300, w: 40, h: 180 },
+      { type: "picture", x: 2450, y: 150, w: 80, h: 70, c: "#9b59b6" },
+      { type: "costumebox", x: 2780, y: 480, w: 160, h: 60 },
+    ],
+    solids: [],
+    platforms: [
+      { x: 0, y: 300, w: 260, look: "fence" },
+      { x: 560, y: 380, w: 280, look: "porchrail" },
+      { x: 1230, y: 300, w: 140, look: "sill" },
+      { x: 1980, y: 330, w: 160, look: "shelf" },
+    ],
+    climbs: [{ x: 40, y: 305, w: 34, h: 190, look: "post" }],
+    knock: [{ x: 600, y: 380, kind: "pumpkin" }, { x: 680, y: 380, kind: "pumpkin" }, { x: 760, y: 380, kind: "pumpkin" }],
+    treats: [[300, 455], [950, 455], [1700, 455], [2200, 455], [2600, 455]],
+    stars: [[235, 250], [1300, 270], [2050, 300]],
+    bonus: { x: 50, y: 278, kind: "witchhat", name: "a witch hat" },
+    petters: [{ x: 750, who: "the ghost kid" }, { x: 1500, who: "the little witch" }],
+    blackCat: { x: 160, y: 300 },
+    decorCoyote: { x: 900, y: 505 },
+    doorbell: { x: 1400 },
+    checkpoints: [[700, 480], [1450, 480], [2300, 480]],
+    nap: { x: 2780, y: 480, w: 160 },
+    tips: [
+      { x: 160, text: "Pounce (Z) knocks pumpkins off the rail. Three should do it.", touch: "Tap SWAT to knock pumpkins off the rail. Three should do it." },
+      { x: 1420, text: "The costume box is just inside. Nap time once the rail is clear.", touch: "The costume box is just inside. Nap time once the rail is clear." },
+    ],
+    lines: ["Best costume: me. Obviously.", "The pumpkins rolled themselves. I was simply nearby.", "Trick or treat: I prefer treat.", "A black cat on Halloween. We get it, we're iconic."],
+  },
 ];
+function levelById(id) { return LEVELS.find(L => L.id === id); }
+const CHAPTER1 = LEVELS.filter(L => L.chapter === 1);
+const save = loadSave();
+const levelSave = i => save.levels[i] || { done: false, best: null, stars: 0, bonus: false, oops: 0 };
+function isUnlocked(id) {
+  const L = levelById(id);
+  if (!L) return false;
+  if (L.chapter === "seasonal") return true;
+  const chapterLs = LEVELS.filter(x => x.chapter === L.chapter);
+  const idx = chapterLs.indexOf(L);
+  return idx === 0 || !!levelSave(chapterLs[idx - 1].id).done;
+}
 
 const OOPS_LINES = {
   vacuum: "The vacuum got me. Rescued. Undignified.",
@@ -967,6 +1049,7 @@ const Sound = {
       case "squeak": this.tone(2600, 0.08, { type: "sine", to: 1800, vol: 0.1 }); this.tone(3200, 0.05, { type: "sine", to: 2400, vol: 0.06, delay: 0.05 }); break;
       case "howl": this.tone(420, 0.8, { type: "triangle", to: 740, vol: 0.08, slide: 0.5, attack: 0.08 }); this.tone(740, 0.5, { type: "triangle", to: 520, vol: 0.05, delay: 0.7, attack: 0.05 }); break;
       case "heart": this.tone(900, 0.1, { type: "sine", to: 1200, vol: 0.06 }); break;
+      case "doorbell": this.tone(880, 0.22, { type: "sine", vol: 0.12 }); this.tone(660, 0.3, { type: "sine", vol: 0.12, delay: 0.22 }); break;
     }
   },
   // A soft hum whose loudness follows the nearest vacuum.
@@ -1110,7 +1193,9 @@ function makeState(L, opts = {}) {
     bonus: L.bonus ? { ...L.bonus, got: false } : null,
     item: L.goal.type === "item" ? { x: L.goal.x, y: L.goal.y, got: false } : null,
     knock: (L.knock || []).map((k, i) => ({ x: k.x, y: k.y, kind: k.kind, i, state: "idle", vx: 0, vy: 0, rot: 0, vr: 0, hit: -1, wob: 0, tipped: false })),
-    mugs: 0, boops: 0, miceCaught: 0, pets: 0, petActive: -1, petT: 0, decorHowled: 0, nemesisSaid: false,
+    mugs: 0, pumpkins: 0, boops: 0, miceCaught: 0, pets: 0, petActive: -1, petT: 0, decorHowled: 0, nemesisSaid: false,
+    blackCat: L.blackCat ? { x: L.blackCat.x, y: L.blackCat.y, stillT: 0, blinkAnim: 0 } : null,
+    doorbellRung: false, blinked: false,
     hazards: (L.hazards || []).map(h => ({ ...h, active: !h.on, warn: false })),
     doors: (L.doors || []).map(d => ({ ...d, closed: false, warn: false, swing: 0, was: false })),
     vacs: (L.vacuums || []).map(v => ({ x: v.x, minX: v.minX, maxX: v.maxX, dir: -1, stun: 0, chase: false, spin: 0, hit: -1 })),
@@ -1124,7 +1209,7 @@ function makeState(L, opts = {}) {
     tipsShown: new Set(),
     camX: 0, camY: Math.max(0, L.height - H), shake: 0,
     particles: [], floaters: [],
-    hint: "", hintT: 0, hintPri: 0, introT: opts.demo ? 0 : 5, fadeIn: 0,
+    hint: "", hintT: 0, hintPri: 0, hintSwap: false, introT: opts.demo ? 0 : 5, fadeIn: 0,
     solidsNow: L.solids.slice(),
     struggle: {
       recent: [], reasonTotal: {}, shown: {}, assistShown: false, pending: null, pendingAssist: false,
@@ -1318,6 +1403,7 @@ function goalDone(s) {
   switch (g.type) {
     case "treats": return s.treats.filter(t => t.got).length >= g.n;
     case "mugs": return s.mugs >= g.n;
+    case "pumpkins": return s.pumpkins >= g.n;
     case "item": return !!(s.item && s.item.got);
     case "mice": return s.miceCaught >= g.n;
     case "stars": return s.stars.every(t => t.got);
@@ -1329,6 +1415,7 @@ function goalProgress(s) {
   switch (g.type) {
     case "treats": return { have: Math.min(g.n, s.treats.filter(t => t.got).length), need: g.n, label: "Treats" };
     case "mugs": return { have: Math.min(g.n, s.mugs), need: g.n, label: "Mugs" };
+    case "pumpkins": return { have: Math.min(g.n, s.pumpkins), need: g.n, label: "Pumpkins" };
     case "item": return { have: s.item.got ? 1 : 0, need: 1, label: "Top shelf" };
     case "mice": return { have: Math.min(g.n, s.miceCaught), need: g.n, label: "Mice" };
     case "stars": return { have: s.stars.filter(t => t.got).length, need: 3, label: "Golden" };
@@ -1340,6 +1427,7 @@ function goalRemainingText(s) {
   switch (g.type) {
     case "treats": return `Not sleepy yet. ${left} more treat${left === 1 ? "" : "s"} first.`;
     case "mugs": return `Not sleepy yet. ${left} more mug${left === 1 ? "" : "s"} must fall.`;
+    case "pumpkins": return `Not sleepy yet. ${left} more pumpkin${left === 1 ? "" : "s"} must roll.`;
     case "item": return "Not sleepy yet. That top-shelf treat is still up there.";
     case "mice": return `Not sleepy yet. ${left} more mouse${left === 1 ? "" : "s"} to catch.`;
     case "stars": return `Not sleepy yet. ${left} golden treat${left === 1 ? "" : "s"} still out there.`;
@@ -1564,6 +1652,9 @@ function updateWorld(s, dt, io) {
             if (k.kind === "mug") {
               s.mugs++;
               if (L.goal.type === "mugs") floater(s, k.x, k.y - 30, s.mugs <= L.goal.n ? `Bonk! ${s.mugs}/${L.goal.n}` : "Bonk!");
+            } else if (k.kind === "pumpkin") {
+              s.pumpkins++;
+              if (L.goal.type === "pumpkins") floater(s, k.x, k.y - 30, s.pumpkins <= L.goal.n ? `Bonk! ${s.pumpkins}/${L.goal.n}` : "Bonk!");
             }
             fx(s, "bonk", k.x, k.y);
           } else {
@@ -1632,14 +1723,38 @@ function updateWorld(s, dt, io) {
     const cr = { x: c.x + 6, y: c.y + 6, w: c.w - 12, h: c.h - 6 };
     if (box && y.hit !== c.attackId && hit(box, yr)) {
       y.hit = c.attackId; y.stun = YOTE.stun; y.x = clamp(y.x + c.facing * 30, y.minX, y.maxX);
+      s.coyoteBonks = (s.coyoteBonks || 0) + 1;
       fx(s, "bonk", y.x + 27, yy); floater(s, y.x + 27, yy - 20, "Bonk! Yip!");
       if (!s.sim && !reducedMotion()) s.shake = 4;
     } else if (hit(cr, yr) && c.invuln <= 0) {
       if (c.vy > 0 && c.y + c.h - c.vy * dt <= yy + 8) {
         c.vy = -560; c.y = yy - c.h; y.stun = Math.max(y.stun, 1.2);
+        s.coyoteBonks = (s.coyoteBonks || 0) + 1;
         fx(s, "boing", y.x + 27, yy); floater(s, y.x + 27, yy - 20, "Boing!");
       } else if (y.stun <= 0) oops(s, "coyote");
     }
+  }
+
+  // The black-cat friend (Halloween): a slow blink if Jefferson sits still nearby for 3s.
+  if (s.blackCat) {
+    const bc = s.blackCat;
+    const near = Math.abs(cx - bc.x) < 80 && Math.abs(cy - bc.y) < 80;
+    const noInput = !io || !(io.held("left") || io.held("right") || io.held("jump") || io.held("swat") || io.held("run"));
+    const still = live && near && c.grounded && Math.abs(c.vx) < 6 && noInput;
+    bc.stillT = still ? bc.stillT + dt : Math.max(0, bc.stillT - dt * 2);
+    if (bc.blinkAnim > 0) bc.blinkAnim = Math.max(0, bc.blinkAnim - dt);
+    if (!s.blinked && bc.stillT >= 3) {
+      s.blinked = true; bc.blinkAnim = 1;
+      floater(s, bc.x, bc.y - 30, "slow blink ♥", "#ffb3d9");
+      if (!s.sim) { Sound.play("heart"); announce("The black cat gives a slow blink."); save.stats.blinks = Math.min(1e7, save.stats.blinks + 1); writeSave(); }
+    }
+  }
+  // The doorbell (Halloween): rings once, the first time Jefferson passes the front door.
+  if (L.doorbell && !s.doorbellRung && live && cx > L.doorbell.x) {
+    s.doorbellRung = true;
+    say(s, "*ding-dong*", 2, 1);
+    floater(s, L.doorbell.x, L.floorY - 220, "*ding-dong*");
+    if (!s.sim) { Sound.play("doorbell"); announce("Doorbell rings."); }
   }
 
   // Mice: scurry near home, flee when the cat gets close, caught by a pounce/swat.
@@ -1780,6 +1895,7 @@ function updateWorld(s, dt, io) {
   if (c.nap > 2.4 && !s.done && !s.demo) { s.done = true; if (!s.sim) finishLevel(s); }
   s.introT = Math.max(0, s.introT - dt);
   s.hintT = Math.max(0, s.hintT - dt);
+  if (!s.hintT) s.hintSwap = false;
 
   if (!s.sim) {
     for (const p of s.particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g == null ? 300 : p.g) * dt; }
@@ -1882,6 +1998,7 @@ const SKY = (() => {
 function drawBackground(s, t) {
   const L = s.L, th = L.theme, cam = s.camX, camY = s.camY;
   if (th === "garden" || th === "roof") { drawSky(s, t); return; }
+  if (th === "halloween") { drawHalloweenBackground(s, t); return; }
   const walls = { living: ["#f3e3c8", "#ecd6b4"], kitchen: ["#e8f1ea", "#dbe9df"], bedroom: ["#dcd6f0", "#d0c8ea"], hallway: ["#f1e4d0", "#e8d7bf"] }[th];
   rect(0, 0, W, H, walls[0]);
   ctx.fillStyle = walls[1];
@@ -1943,6 +2060,24 @@ function drawSky(s, t) {
     }
   }
 }
+// Halloween: night sky with a full moon outside, warm lamp light once through the door.
+function drawHalloweenBackground(s, t) {
+  const L = s.L, doorX = L.doorbell ? L.doorbell.x : L.width * 0.48;
+  const wallX = doorX - s.camX; // the house wall starts at the front door, in world space
+  rect(0, 0, W, H, "#2a2042");
+  if (wallX > 0) {
+    circ(760 - s.camX * 0.05, 110, 46, "#fff3d6");
+    ctx.fillStyle = "#fff";
+    for (const st of SKY.stars) { ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 2 + st.tw); ctx.fillRect(st.x, st.y, st.r, st.r); }
+    ctx.globalAlpha = 1;
+  }
+  if (wallX < W) {
+    const x0 = Math.max(0, wallX);
+    rect(x0, 0, W - x0, H, "#6b4a3f");                       // warm, lamp-lit wallpaper
+    ctx.fillStyle = "#5e4036";
+    for (let x = wallX + 18; x < W; x += 60) if (x + 24 > x0) ctx.fillRect(Math.max(x, x0), 0, x + 24 - Math.max(x, x0), H);
+  }
+}
 function drawCloud(x, y, sc) {
   ctx.fillStyle = "rgba(255,255,255,0.9)";
   ctx.beginPath();
@@ -1978,6 +2113,12 @@ function drawFloor(s) {
       rect(x0, y, x1 - x0, h, "#7a5536"); rect(x0, y - 6, x1 - x0, 18, "#5fae4e");
       ctx.fillStyle = "#4d9a40"; for (let x = Math.floor(x0 / 14) * 14; x < x1; x += 14) { ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x + 4, y - 12); ctx.lineTo(x + 8, y + 2); ctx.fill(); }
       break;
+    case "halloween": {
+      const doorX = L.doorbell ? L.doorbell.x : L.width * 0.48;
+      if (x0 < doorX) { const e = Math.min(x1, doorX); rect(x0, y - 10, e - x0, 10, "#4a3d2a"); rect(x0, y, e - x0, h, "#3a2f20"); }
+      if (x1 > doorX) { const sx = Math.max(x0, doorX); rect(sx, y - 12, x1 - sx, 12, "#c9a37a"); rect(sx, y, x1 - sx, h, "#9b6b43"); }
+      break;
+    }
   }
 }
 
@@ -2088,6 +2229,30 @@ function drawDecor(s, d, t) {
       for (let i = 0; i <= w; i += 20) ctx.lineTo(x + i, y + Math.sin((i / w) * Math.PI) * h); ctx.stroke();
       for (let i = 10; i < w; i += 40) circ(x + i, y + Math.sin((i / w) * Math.PI) * h + 5, 4, ["#ffd34d", "#ff7aa2", "#7ad0ff", "#9cff8a"][(i / 40 | 0) % 4]);
       break;
+    case "bats": {
+      const n = Math.max(1, Math.round(w / 40));
+      for (let i = 0; i < n; i++) {
+        const bx = x + (i + 0.5) * (w / n);
+        const sway = reducedMotion() ? 0 : Math.sin(t * 1.6 + i * 1.3) * 6;
+        ctx.save(); ctx.translate(bx + sway, y);
+        ctx.strokeStyle = "rgba(255,232,200,0.55)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-sway, -14); ctx.lineTo(0, 4); ctx.stroke();
+        ctx.fillStyle = "#1a1424"; ctx.strokeStyle = "#e8a94a"; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 6); ctx.quadraticCurveTo(-14, -6, -18, 2); ctx.quadraticCurveTo(-8, -2, 0, 10);
+        ctx.quadraticCurveTo(8, -2, 18, 2); ctx.quadraticCurveTo(14, -6, 0, 6);
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.strokeStyle = "rgba(255,232,200,0.55)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, y - 14); ctx.lineTo(x + w, y - 14); ctx.stroke();
+      break;
+    }
+    case "costumebox":
+      fillRR(x, y - 26, w, h + 26, 10, "#c9a35a");
+      ctx.strokeStyle = "#a5793a"; ctx.lineWidth = 3; ctx.strokeRect(x + 6, y - 20, w - 12, h + 14);
+      rect(x + w / 2 - 3, y - 26, 6, h + 26, "#8a6a3a");
+      ctx.fillStyle = "#fff3c4"; ctx.font = `700 11px ${FONT}`; ctx.textAlign = "center"; ctx.fillText("COSTUMES", x + w / 2, y - 8);
+      break;
   }
 }
 
@@ -2158,6 +2323,11 @@ function drawPlatform(s, p, t) {
     case "branch": ctx.strokeStyle = "#7a5536"; ctx.lineWidth = 12; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x + w, y + 4); ctx.stroke(); circ(x + w * 0.8, y - 14, 22, "#5f9e4a"); circ(x + w * 0.3, y - 10, 18, "#6aab55"); break;
     case "antenna": rect(x, y, w, 5, "#9aa0b0"); rect(x + 10, y + 16, w - 20, 4, "#9aa0b0"); break;
     case "glass": rect(x, y, w, 10, "#6b6b78"); ctx.fillStyle = "rgba(170,220,255,0.55)"; ctx.fillRect(x + 6, y - 2, w - 12, 8); break;
+    case "porchrail": {
+      rect(x, y, w, 6, "#6b4a2e"); rect(x, y + 36, w, 6, "#6b4a2e");
+      ctx.fillStyle = "#6b4a2e"; for (let xx = x + 6; xx < x + w - 6; xx += 18) ctx.fillRect(xx, y + 6, 4, 30);
+      break;
+    }
     default: break;
   }
 }
@@ -2258,6 +2428,13 @@ function drawKnock(k, t) {
     case "jar": fillRR(-9, -24, 18, 24, 4, "rgba(220,240,255,0.8)"); rect(-9, -27, 18, 5, "#c0504d"); circ(-3, -8, 3, "#c58a4a"); circ(3, -14, 3, "#c58a4a"); break;
     case "lamp": rect(-2, -20, 4, 20, "#5a4a3a"); ctx.fillStyle = "#f6d78f"; ctx.beginPath(); ctx.moveTo(-12, -18); ctx.lineTo(12, -18); ctx.lineTo(7, -34); ctx.lineTo(-7, -34); ctx.fill(); break;
     case "shoe": fillRR(-14, -10, 28, 10, 5, "#c0504d"); rect(-14, -2, 28, 2, "#fff"); break;
+    case "pumpkin":
+      circ(0, -10, 11, "#e8913a");
+      ctx.strokeStyle = "#b5601d"; ctx.lineWidth = 1.5;
+      for (const sx of [-6, 0, 6]) { ctx.beginPath(); ctx.moveTo(sx, -19); ctx.lineTo(sx, -1); ctx.stroke(); }
+      rect(-2, -23, 4, 6, "#4d9a40");
+      ctx.strokeStyle = "#6b3510"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, -8, 4, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
+      break;
   }
   ctx.restore();
 }
@@ -2269,10 +2446,25 @@ function drawFish(x, y, fill, edge) {
   ctx.fill(); ctx.stroke();
   circ(x + 5, y - 1, 1.4, edge);
 }
-function drawGolden(x, y, t, sc = 1) {
+function drawGolden(x, y, t, sc = 1, wrapped = false) {
   ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc); ctx.rotate(Math.sin(t * 2) * 0.15);
   ctx.globalAlpha = 0.25 + Math.sin(t * 3) * 0.08; circ(0, 0, 20, "#fff1a0"); ctx.globalAlpha = 1;
   drawFish(0, 0, "#ffd34d", "#d19a14");
+  if (wrapped) {
+    ctx.strokeStyle = "#ffd34d"; ctx.lineWidth = 2;
+    for (const [sx, dir] of [[-15, -1], [13, 1]]) {
+      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx + dir * 6, -4); ctx.moveTo(sx, 0); ctx.lineTo(sx + dir * 6, 4); ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+function drawWitchHat(hx, hy, scale = 1) {
+  ctx.save(); ctx.translate(hx, hy); ctx.scale(scale, scale);
+  ctx.fillStyle = "#3a2a52";
+  ctx.beginPath(); ctx.moveTo(-10, 4); ctx.lineTo(10, 4); ctx.lineTo(1, -26); ctx.fill();
+  fillRR(-14, 2, 28, 6, 3, "#2b2233");
+  rect(-14, 6, 28, 2.5, "#9b59b6");
+  circ(1, -26, 2.5, "#9b59b6");
   ctx.restore();
 }
 function drawBonus(kind, x, y, t) {
@@ -2285,6 +2477,7 @@ function drawBonus(kind, x, y, t) {
     case "crown": ctx.fillStyle = "#ffd34d"; ctx.beginPath(); ctx.moveTo(-12, 8); ctx.lineTo(-12, -6); ctx.lineTo(-6, 0); ctx.lineTo(0, -10); ctx.lineTo(6, 0); ctx.lineTo(12, -6); ctx.lineTo(12, 8); ctx.fill(); circ(0, 2, 2.5, "#e86f9a"); break;
     case "hairtie": ctx.strokeStyle = "#e86f9a"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.stroke(); ctx.strokeStyle = "#c24f7a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 8, 0.3, 1.6); ctx.stroke(); break;
     case "stuffedfish": ctx.restore(); drawStuffedFish(x, y, 1.1); return;
+    case "witchhat": ctx.restore(); drawWitchHat(x, y + 6, 1.3); return;
   }
   ctx.restore();
 }
@@ -2352,8 +2545,52 @@ function drawMouseCritter(m, t) {
 }
 
 // A friendly human crouching with a hand out, waiting for pets.
+function drawGhostKid(x, base, t, active) {
+  ctx.save(); ctx.translate(x, base);
+  ctx.fillStyle = "#fdfdfd";
+  ctx.beginPath(); ctx.moveTo(-18, -50);
+  for (let i = 0; i <= 4; i++) ctx.quadraticCurveTo(-18 + 9 * i + 4.5, -4, -18 + 9 * (i + 1), -12);
+  ctx.lineTo(18, -54); ctx.lineTo(-18, -54); ctx.fill();
+  ctx.strokeStyle = "#f2c9a8"; ctx.lineWidth = 7; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-14, -36); ctx.lineTo(-26, -14 + (active ? Math.sin(t * 10) * 2 : 0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(14, -36); ctx.lineTo(10, -10); ctx.stroke();
+  circ(-6, -38, 3.2, "#2b2233"); circ(6, -38, 3.2, "#2b2233");
+  ctx.restore();
+}
+function drawLittleWitch(x, base, t, active) {
+  ctx.save(); ctx.translate(x, base);
+  fillRR(-20, -56, 40, 46, 14, "#5b3f7a");
+  ctx.strokeStyle = "#f2c9a8"; ctx.lineWidth = 9; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-16, -40); ctx.lineTo(-30, -16 + (active ? Math.sin(t * 10) * 2 : 0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(16, -40); ctx.lineTo(10, -6); ctx.stroke();
+  ctx.fillStyle = "#5b3f7a"; rr(-14, -12, 10, 20, 4); ctx.fill(); rr(4, -12, 10, 20, 4); ctx.fill();
+  circ(0, -66, 16, "#f2c9a8");
+  circ(-5, -65, 1.8, "#2b2233"); circ(5, -65, 1.8, "#2b2233");
+  ctx.strokeStyle = "#a0524a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, -60, 4, 0.15, Math.PI - 0.15); ctx.stroke();
+  ctx.fillStyle = "#2b2233";
+  ctx.beginPath(); ctx.moveTo(-14, -78); ctx.lineTo(14, -78); ctx.lineTo(0, -116); ctx.fill();
+  fillRR(-18, -80, 36, 8, 4, "#2b2233");
+  rect(-18, -80, 36, 4, "#9b59b6");
+  ctx.restore();
+}
+function drawBlackCat(bc, t) {
+  const closeAmt = bc.blinkAnim > 0 ? Math.sin(Math.min(1, bc.blinkAnim) * Math.PI) : 0;
+  ctx.save(); ctx.translate(bc.x, bc.y);
+  ell(0, 2, 15, 8, "rgba(0,0,0,0.18)");
+  ell(0, -10, 13, 11, "#1c1a14");
+  circ(10, -20, 9, "#1c1a14");
+  ctx.fillStyle = "#1c1a14";
+  ctx.beginPath(); ctx.moveTo(4, -26); ctx.lineTo(2, -36); ctx.lineTo(10, -28); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(10, -28); ctx.lineTo(18, -36); ctx.lineTo(16, -24); ctx.fill();
+  const openAmt = 1 - closeAmt;
+  if (openAmt > 0.12) { ell(13, -21, 3, 3 * openAmt, "#ffd34d"); circ(14, -21, 1, "#1c1a14"); }
+  else { ctx.strokeStyle = "#ffd34d"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(10, -21); ctx.lineTo(16, -21); ctx.stroke(); }
+  ctx.restore();
+}
 function drawPetter(p, s, t, active) {
   const x = p.x, base = s.L.floorY;
+  if (p.who === "the ghost kid") { drawGhostKid(x, base, t, active); return; }
+  if (p.who === "the little witch") { drawLittleWitch(x, base, t, active); return; }
   const COLORS = { "the human": "#6f93d2", "the kid": "#e8a94a", "the neighbor": "#7bbf7a" };
   const shirt = COLORS[p.who] || "#9a8fd0";
   ctx.save(); ctx.translate(x, base);
@@ -2539,6 +2776,7 @@ function drawCat(s, t) {
   ctx.fillStyle = P.nose; ctx.beginPath(); ctx.moveTo(hx + 10, hy + 3); ctx.lineTo(hx + 12.5, hy + 2); ctx.lineTo(hx + 11.5, hy + 5); ctx.fill();
   ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 1;
   for (const dy of [-1, 2]) { ctx.beginPath(); ctx.moveTo(hx + 8, hy + 5); ctx.lineTo(hx + 20, hy + 4 + dy * 1.5); ctx.stroke(); }
+  if (save.settings.hat) drawWitchHat(hx - 2, hy - 18);
   ctx.restore();
   ctx.restore();
   ctx.globalAlpha = 1;
@@ -2565,6 +2803,7 @@ function drawNap(t, c, asleep) {
   ctx.strokeStyle = P.pupil; ctx.lineWidth = 1.6;
   if (asleep) { ctx.beginPath(); ctx.arc(20, hy, 3, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke(); }
   else { ctx.beginPath(); ctx.moveTo(18, hy); ctx.lineTo(24, hy); ctx.stroke(); }
+  if (save.settings.hat) drawWitchHat(14, hy - 10, 0.85);
   if (!asleep) return;
   ctx.scale(c.facing, 1);
   ctx.fillStyle = "#5a4a6a"; ctx.font = `bold 16px ${FONT}`; ctx.textAlign = "left";
@@ -2593,9 +2832,9 @@ function drawWorld(s, t) {
   if (L.decorCoyote) { const dc = L.decorCoyote; ctx.globalAlpha = 0.9; drawCoyote({ x: dc.x, y: dc.y, dir: -1, stun: 0, chase: false, spin: t }, { L: { floorY: dc.y + 30 } }, t, 0.6); ctx.globalAlpha = 1; }
   for (const k of s.knock) if (k.state !== "gone" && k.x > s.camX - 40 && k.x < s.camX + W + 40) drawKnock(k, t);
   for (const tr of s.treats) if (!tr.got && tr.x > s.camX - 30 && tr.x < s.camX + W + 30) drawFish(tr.x, tr.y + Math.sin(t * 3 + tr.x) * 3, "#d9a35b", "#a8733a");
-  for (const st of s.stars) if (!st.got) drawGolden(st.x, st.y + Math.sin(t * 2.5 + st.x) * 4, t);
+  for (const st of s.stars) if (!st.got) drawGolden(st.x, st.y + Math.sin(t * 2.5 + st.x) * 4, t, 1, L.theme === "halloween");
   if (s.bonus && !s.bonus.got) drawBonus(s.bonus.kind, s.bonus.x, s.bonus.y + Math.sin(t * 2) * 3, t);
-  if (s.item && !s.item.got) { fillRR(s.item.x - 18, s.item.y + 6, 36, 10, 4, "#c0504d"); drawGolden(s.item.x, s.item.y - 2, t, 1.5); }
+  if (s.item && !s.item.got) { fillRR(s.item.x - 18, s.item.y + 6, 36, 10, 4, "#c0504d"); drawGolden(s.item.x, s.item.y - 2, t, 1.5, L.theme === "halloween"); }
   for (const g of s.bugs) { if (g.caught && g.y < s.camY - 20) continue; circ(g.x, g.y, 4, "#3b3f4a"); ctx.globalAlpha = 0.6; ell(g.x - 4, g.y - 4, 5, 3, "#e6f4ff", Math.sin(t * 40)); ell(g.x + 4, g.y - 4, 5, 3, "#e6f4ff", -Math.sin(t * 40)); ctx.globalAlpha = 1; }
   for (const p of s.pigeons) { if (p.fly > 3) continue; ell(p.x, p.y - 10, 12, 9, "#8a8fa6"); circ(p.x + 9, p.y - 18, 6, "#9aa0b8"); circ(p.x + 11, p.y - 19, 1.5, "#1c1a14"); ell(p.x - 2, p.y - 12 - (p.fly ? Math.sin(t * 30) * 6 : 0), 8, 4, "#6f748c"); }
   drawBird(s.bird, t);
@@ -2603,6 +2842,7 @@ function drawWorld(s, t) {
   for (const m of s.mice) if (!m.caught) drawMouseCritter(m, t);
   for (const v of s.vacs) if (v.x > s.camX - 80 && v.x < s.camX + W + 20) drawVac(v, s, t);
   for (const y of s.coyotes) if (y.x > s.camX - 80 && y.x < s.camX + W + 20) drawCoyote(y, s, t);
+  if (s.blackCat) drawBlackCat(s.blackCat, t);
   drawCat(s, t);
   if (s.struggle.arrowT > 0) drawStruggleArrow(s, t);
   for (const p of s.particles) {
@@ -2639,7 +2879,7 @@ function drawHUD(s, t) {
   const L = s.L, gp = goalProgress(s);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   fillRR(14, 12, 340, 58, 14, "rgba(43,34,51,0.6)");
-  ctx.fillStyle = "#ffe8c8"; ctx.font = `800 13px ${FONT}`; ctx.fillText(`${L.id}. ${L.name.toUpperCase()}`, 28, 32);
+  ctx.fillStyle = "#ffe8c8"; ctx.font = `800 13px ${FONT}`; ctx.fillText(`${L.chapter === "seasonal" ? "" : L.id + ". "}${L.name.toUpperCase()}`, 28, 32);
   ctx.fillStyle = "#fff"; ctx.font = `900 20px ${FONT}`;
   let label;
   if (L.goal.type === "reach") label = "Get to the basket";
@@ -2695,7 +2935,7 @@ function drawHUD(s, t) {
   if (s.hintT > 0 && s.hint) {
     ctx.font = `800 17px ${FONT}`;
     const lines = wrapText(s.hint, 520), bw = Math.min(600, Math.max(...lines.map(l => ctx.measureText(l).width)) + 40), bh = 16 + lines.length * 22;
-    const by = touchActive() && !portraitLayout ? 120 : H - 36 - bh;
+    const by = hintY(s, bw, bh);
     ctx.globalAlpha = Math.min(1, s.hintT * 3);
     fillRR(W / 2 - bw / 2, by, bw, bh, 14, "rgba(255,248,238,0.95)");
     ctx.fillStyle = "#2b2233"; ctx.textAlign = "center";
@@ -2704,6 +2944,17 @@ function drawHUD(s, t) {
   }
   const fade = s.cat.flop > 0.55 ? Math.min(1, (s.cat.flop - 0.55) / 0.45) : s.fadeIn / 0.45;
   if (fade > 0) { ctx.fillStyle = `rgba(43,34,51,${fade * 0.85})`; ctx.fillRect(0, 0, W, H); }
+}
+// The hint bubble has two spots: under the HUD and at the bottom. It uses the usual one for
+// the layout and swaps when the cat is behind it. It stays swapped until the cat reaches the
+// new spot, so the bubble does not flicker while the cat walks along its edge.
+function hintY(s, bw, bh) {
+  const top = 120, bottom = H - 36 - bh, usual = touchActive() && !portraitLayout ? top : bottom;
+  const c = s.cat, x = c.x - s.camX, y = c.y - s.camY, m = 8;
+  const hides = by => x + c.w > W / 2 - bw / 2 - m && x < W / 2 + bw / 2 + m && y + c.h > by - m && y < by + bh + m;
+  const now = s.hintSwap ? (usual === top ? bottom : top) : usual, other = now === top ? bottom : top;
+  if (hides(now) && !hides(other)) { s.hintSwap = !s.hintSwap; return other; }
+  return now;
 }
 function fmtTime(sec) {
   const m = Math.floor(sec / 60), ss = Math.floor(sec % 60);
@@ -2801,8 +3052,8 @@ function starRow(target, have, total = 3) {
 }
 function totals() {
   let done = 0, stars = 0, bonus = 0, oopsN = 0;
-  for (let i = 1; i <= LEVEL_COUNT; i++) {
-    const r = levelSave(i);
+  for (const L of CHAPTER1) {
+    const r = levelSave(L.id);
     if (r.done) done++;
     stars += popcount(r.stars); if (r.bonus) bonus++; oopsN += r.oops;
   }
@@ -2850,9 +3101,9 @@ function show(name) {
   if (name === "settings") syncSettings();
   if (name === "credits") startCredits();
   if (name === "pause" && game) $("pause-goal").textContent = game.L.goalText;
-  if (!game && (!demo || demo.credits !== (name === "credits"))) demo = name === "credits" ? makeDemo(6, true) : makeDemo(1, false);
+  if (!game && (!demo || demo.credits !== (name === "credits"))) demo = name === "credits" ? makeDemo(CHAPTER1[CHAPTER1.length - 1].id, true) : makeDemo(CHAPTER1[0].id, false);
   if (name !== "play") Sound.setHum(0);
-  if (name === "credits") setMusic(LEVELS[5].music, 99);
+  if (name === "credits") setMusic(CHAPTER1[CHAPTER1.length - 1].music, 99);
   else if (game) setMusic(game.L.music, game.L.id);
   else setMusic(TITLE_MUSIC, 0);
   Sound.apply(name !== "play" && name !== "credits");
@@ -2876,57 +3127,72 @@ function goBack() {
 }
 function pause() { if (mode === "play" && game) show("pause"); }
 
+function isSpookySeason(d = new Date()) { return d.getMonth() === 9; }
 function refreshTitle() {
   const t = totals(), any = Object.keys(save.levels).length > 0;
   const next = nextLevelId();
   const cont = $("btn-continue");
   cont.hidden = !any;
-  cont.textContent = t.done === LEVEL_COUNT ? "Play again" : `Continue: ${LEVELS[next - 1].name}`;
+  cont.textContent = t.done === CHAPTER1.length ? "Play again" : `Continue: ${levelById(next).name}`;
   $("btn-play").textContent = any ? "Adventures" : "Play";
-  $("btn-credits").hidden = !levelSave(LEVEL_COUNT).done;
+  $("btn-credits").hidden = !levelSave(CHAPTER1[CHAPTER1.length - 1].id).done;
   $("title-note").textContent = touchActive() ? "Tap a button to start." : "Press Enter or click a button to start.";
+  document.body.classList.toggle("motion-reduced", reducedMotion());
+  const spooky = isSpookySeason();
+  $("spooky-tag").hidden = !spooky;
+  for (const b of document.querySelectorAll(".paper-bat")) b.hidden = !spooky;
 }
 function nextLevelId() {
-  for (let i = 1; i <= LEVEL_COUNT; i++) if (!levelSave(i).done) return i;
-  return clamp(save.lastLevel, 1, LEVEL_COUNT);
+  for (const L of CHAPTER1) if (!levelSave(L.id).done) return L.id;
+  return clamp(save.lastLevel, 1, CHAPTER1.length);
 }
 
+function buildCard(L) {
+  const r = levelSave(L.id), open = isUnlocked(L.id), seasonal = L.chapter === "seasonal";
+  const b = el("button", "card");
+  b.type = "button"; b.dataset.level = String(L.id); b.disabled = !open;
+  b.append(el("span", "num", seasonal ? "SEASONAL" : `ADVENTURE ${L.id}`), el("span", "name", L.name), el("span", "meta", L.setting));
+  const stars = el("span", "stars"); starRow(stars, popcount(r.stars)); stars.setAttribute("aria-hidden", "true");
+  b.append(stars);
+  b.append(el("span", "meta", r.done ? `Best ${fmtTime(r.best || 0)}${r.bonus ? " · found " + L.bonus.name : ""}` : open ? "Not napped yet" : "Locked"));
+  if (r.done) b.append(el("span", "badge", "✓"));
+  else if (!open) b.append(el("span", "badge", "🔒"));
+  else if (seasonal) b.append(el("span", "badge", "🎃"));
+  b.setAttribute("aria-label", `${seasonal ? "Seasonal" : "Adventure " + L.id}, ${L.name}, ${L.setting}. ` +
+    (open ? `${popcount(r.stars)} of 3 golden treats.${r.done ? " Completed, best time " + fmtTime(r.best || 0) + "." : ""}` : "Locked: finish the previous adventure first."));
+  b.addEventListener("click", () => { Sound.play("ui"); startLevel(L.id); });
+  return b;
+}
 function buildSelect() {
   const grid = $("level-grid");
   grid.textContent = "";
-  for (const L of LEVELS) {
-    const r = levelSave(L.id), open = isUnlocked(L.id);
-    const b = el("button", "card");
-    b.type = "button"; b.dataset.level = String(L.id); b.disabled = !open;
-    b.append(el("span", "num", `ADVENTURE ${L.id}`), el("span", "name", L.name), el("span", "meta", L.setting));
-    const stars = el("span", "stars"); starRow(stars, popcount(r.stars)); stars.setAttribute("aria-hidden", "true");
-    b.append(stars);
-    b.append(el("span", "meta", r.done ? `Best ${fmtTime(r.best || 0)}${r.bonus ? " · found " + L.bonus.name : ""}` : open ? "Not napped yet" : "Locked"));
-    if (r.done) b.append(el("span", "badge", "✓"));
-    else if (!open) b.append(el("span", "badge", "🔒"));
-    b.setAttribute("aria-label", `Adventure ${L.id}, ${L.name}, ${L.setting}. ` +
-      (open ? `${popcount(r.stars)} of 3 golden treats.${r.done ? " Completed, best time " + fmtTime(r.best || 0) + "." : ""}` : "Locked: finish the previous adventure first."));
-    b.addEventListener("click", () => { Sound.play("ui"); startLevel(L.id); });
-    grid.append(b);
-  }
+  const g1 = el("div", "grid"), g2 = el("div", "grid");
+  for (const L of CHAPTER1) g1.append(buildCard(L));
+  for (const L of LEVELS.filter(x => x.chapter === "seasonal")) g2.append(buildCard(L));
+  // In October the seasonal row goes first, so it isn't below the fold
+  const rows = [[el("h3", "", "Chapter 1: Home"), g1], [el("h3", "", "Seasonal"), g2]];
+  if (isSpookySeason()) rows.reverse();
+  for (const r of rows) grid.append(...r);
   const t = totals();
-  $("select-totals").textContent = `${t.done}/${LEVEL_COUNT} adventures · ${t.stars}/${LEVEL_COUNT * 3} golden treats · ${t.bonus}/${LEVEL_COUNT} secrets`;
+  $("select-totals").textContent = `${t.done}/${CHAPTER1.length} adventures · ${t.stars}/${CHAPTER1.length * 3} golden treats · ${t.bonus}/${CHAPTER1.length} secrets` +
+    (levelSave("halloween").done ? " · 🎃 Spooky Season ✓" : "");
 }
 
 function startLevel(id, force) {
-  const L = LEVELS[id - 1];
+  const L = levelById(id);
   if (!L || (!force && !isUnlocked(id))) return false;
   Sound.stopLoops();
   game = makeState(L);
-  save.lastLevel = id; writeSave();
+  if (L.chapter === 1) { save.lastLevel = id; writeSave(); }
   acc = 0;
   show("play");
-  announce(`Adventure ${id}: ${L.name}. ${L.goalText}`);
+  announce(L.chapter === "seasonal" ? `${L.name}. ${L.goalText}` : `Adventure ${id}: ${L.name}. ${L.goalText}`);
   return true;
 }
 
 function finishLevel(s) {
-  const L = s.L, id = L.id, prev = levelSave(id);
+  const L = s.L, id = L.id, prev = levelSave(id), seasonal = L.chapter === "seasonal";
+  const idx = seasonal ? -1 : CHAPTER1.indexOf(L), isLast = !seasonal && idx === CHAPTER1.length - 1;
   const mask = s.stars.reduce((m, t, i) => m | (t.got ? 1 << i : 0), 0);
   const time = Math.max(0.5, Math.round(s.time * 10) / 10);
   const newBest = prev.best == null || time < prev.best;
@@ -2937,11 +3203,17 @@ function finishLevel(s) {
   };
   save.chaos = Math.min(1e7, save.chaos + s.chaos);
   save.mice = Math.min(1e7, save.mice + s.miceCaught);
-  if (id < LEVEL_COUNT) save.lastLevel = id + 1;
+  if (!seasonal && !isLast) save.lastLevel = CHAPTER1[idx + 1].id;
+  save.stats.mugs = Math.min(1e7, save.stats.mugs + s.mugs);
+  save.stats.mice = Math.min(1e7, save.stats.mice + s.miceCaught);
+  save.stats.pets = Math.min(1e7, save.stats.pets + s.pets);
+  save.stats.bonks = Math.min(1e7, save.stats.bonks + (s.coyoteBonks || 0));
+  save.stats.oops = Math.min(1e7, save.stats.oops + s.oops);
+  save.stats.naps = Math.min(1e7, save.stats.naps + 1);
   writeSave();
 
   const runStars = popcount(mask);
-  $("res-title").textContent = id === LEVEL_COUNT ? "The best nap of all!" : "Nap achieved!";
+  $("res-title").textContent = seasonal ? "Nap achieved!" : isLast ? "The best nap of all!" : "Nap achieved!";
   starRow($("res-stars"), runStars);
   $("res-stars-sr").textContent = `${runStars} of 3 golden treats found.`;
   const stats = $("res-stats");
@@ -2957,9 +3229,10 @@ function finishLevel(s) {
   if (s.chaos) row("Chaos", `${s.chaos} thing${s.chaos === 1 ? "" : "s"} knocked over`);
   $("res-line").textContent = `“${L.lines[Math.floor(Math.random() * L.lines.length)]}”`;
   const next = $("btn-next");
-  next.textContent = id === LEVEL_COUNT ? "Roll credits" : "Next adventure";
+  next.textContent = seasonal ? "Back to adventures" : isLast ? "Roll credits" : "Next adventure";
   show("complete");
-  announce(`Adventure complete. Time ${fmtTime(time)}. ${runStars} of 3 golden treats.${firstClear && id < LEVEL_COUNT ? " " + LEVELS[id].name + " unlocked." : ""}`);
+  const unlockNote = firstClear && !seasonal && !isLast ? " " + CHAPTER1[idx + 1].name + " unlocked." : "";
+  announce(`${seasonal ? L.name : "Adventure"} complete. Time ${fmtTime(time)}. ${runStars} of 3 golden treats.${unlockNote}`);
 }
 
 function startCredits() {
@@ -2968,7 +3241,7 @@ function startCredits() {
   void roll.offsetHeight;          // restart the scroll
   roll.style.animation = "";
   const t = totals();
-  $("credits-record").textContent = `${t.done}/${LEVEL_COUNT} adventures · ${t.stars}/${LEVEL_COUNT * 3} golden treats · ${t.bonus}/${LEVEL_COUNT} secrets · ${save.chaos} things knocked over · ${t.oops} rescues`;
+  $("credits-record").textContent = `${t.done}/${CHAPTER1.length} adventures · ${t.stars}/${CHAPTER1.length * 3} golden treats · ${t.bonus}/${CHAPTER1.length} secrets · ${save.chaos} things knocked over · ${t.oops} rescues`;
   $("credits-mice").textContent = `Mice caught: ${save.mice}`;
 }
 $("roll").addEventListener("animationend", () => {
@@ -2986,8 +3259,10 @@ const GO = {
   restart: () => { if (game) startLevel(game.L.id, true); },
   next: () => {
     if (!game) return show("select");
-    if (game.L.id >= LEVEL_COUNT) { game = null; show("credits"); }
-    else startLevel(game.L.id + 1);
+    if (game.L.chapter === "seasonal") { game = null; show("select"); return; }
+    const idx = CHAPTER1.indexOf(game.L);
+    if (idx >= CHAPTER1.length - 1) { game = null; show("credits"); }
+    else startLevel(CHAPTER1[idx + 1].id);
   },
   credits: () => { game = null; show("credits"); },
   title: () => show("title"),
@@ -3060,6 +3335,8 @@ function syncSettings() {
   const st = save.settings;
   setToggle("set-sfx", st.sfx); setToggle("set-music", st.music);
   setToggle("set-assist", st.assist); setToggle("set-haptics", st.haptics);
+  setToggle("set-hat", st.hat);
+  $("set-hat").hidden = $("hat-label").hidden = !levelSave("halloween").bonus;
   setToggle("btn-fullscreen", isFs());
   $("btn-fullscreen").hidden = $("fs-label").hidden = !fsSupported || itchPhone();
   $("set-volume").value = String(st.volume);
@@ -3080,12 +3357,13 @@ function bindToggle(id, key) {
 }
 bindToggle("set-sfx", "sfx"); bindToggle("set-music", "music");
 bindToggle("set-assist", "assist"); bindToggle("set-haptics", "haptics");
+bindToggle("set-hat", "hat");
 $("set-volume").addEventListener("input", e => {
   save.settings.volume = num(Number(e.target.value), 0, 100, 70);
   Sound.apply(mode !== "play");
 });
 $("set-volume").addEventListener("change", () => { writeSave(); Sound.play("treat"); });
-$("set-motion").addEventListener("change", e => { save.settings.motion = pick(e.target.value, ["auto", "full", "reduced"], "auto"); writeSave(); });
+$("set-motion").addEventListener("change", e => { save.settings.motion = pick(e.target.value, ["auto", "full", "reduced"], "auto"); writeSave(); document.body.classList.toggle("motion-reduced", reducedMotion()); });
 $("set-touch").addEventListener("change", e => { save.settings.touch = pick(e.target.value, ["auto", "on", "off"], "auto"); writeSave(); layout(); });
 $("btn-fullscreen").addEventListener("click", async () => {
   try {
@@ -3120,8 +3398,11 @@ $("btn-reset").addEventListener("click", () => {
   clearTimeout(resetArmed); resetArmed = 0;
   b.textContent = "Reset progress";
   for (const k of Object.keys(save.levels)) delete save.levels[k];
-  save.lastLevel = 1; save.chaos = 0;
+  save.lastLevel = 1; save.chaos = 0; save.mice = 0;
+  for (const k of Object.keys(save.stats)) save.stats[k] = 0;
+  save.stickers = {}; save.keys = {}; save.settings.hat = false;   // the hat goes with the bonus that unlocked it
   writeSave();
+  syncSettings();
   toast("Progress reset. Fresh start, fresh naps.");
   announce("Progress reset");
 });
@@ -3274,7 +3555,7 @@ addEventListener("gamepadconnected", () => toast("Controller connected. Press A 
 
 // ---------- Demo scenes behind the menus ----------
 function makeDemo(id, night) {
-  const s = makeState(LEVELS[id - 1], { demo: true });
+  const s = makeState(levelById(id), { demo: true });
   s.night = night; s.credits = night; s.demoT = 0; s.introT = 0;
   if (night) {
     const n = s.L.nap, c = s.cat;
@@ -3357,7 +3638,8 @@ function frame(now) {
 if (TEST) {
   window.__jeff = Object.freeze({
     LEVELS, PHYS, W, H, STEP, CAT_W, CAT_H,
-    makeState, stepCat, updateWorld, hazardAt, climbZoneAt, sanitizeSave, goalDone, goalProgress,
+    makeState, stepCat, updateWorld, hazardAt, climbZoneAt, sanitizeSave, goalDone, goalProgress, hintY,
+    levelById, isSpookySeason, defaultSave, isUnlocked,
     startLevel: id => startLevel(id, true), show, finishLevel, layout,
     get mode() { return mode; }, get game() { return game; }, get save() { return save; },
     get touchActive() { return touchActive(); }, get portrait() { return portraitLayout; },

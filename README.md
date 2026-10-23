@@ -88,8 +88,7 @@ it here and use "Download raw file", then open it in any modern browser. It work
 
 Everything is drawn by the game's own code every frame, using simple shapes in Jefferson's
 colours. There are no image files and no AI image generation. Sound effects and music are
-synthesised in the browser. Art based on photos of the real Jefferson may replace the
-drawings one day.
+synthesised in the browser. The game uses no photos of the real Jefferson.
 
 ## Credits
 
