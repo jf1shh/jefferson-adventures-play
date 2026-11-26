@@ -15,7 +15,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-pteZXFTHkMyXGbRLaZYCrJbHtBjjhlQAlq3iUA5kyUg='; style-src 'sha256-v4u7EsZtQ2QxslPzVhp5rLeD326+TysqCteUCKmr9RA='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-a+hocH3d5SC7u5UqU5SurBEQblxiPttPCNMBJ52bQMU='; style-src 'sha256-v4u7EsZtQ2QxslPzVhp5rLeD326+TysqCteUCKmr9RA='; img-src data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Jefferson's Adventures is a cozy platformer starring Jefferson, an orange tabby. Play 18 short adventures across three chapters plus Spooky Season and Feast Day, in six languages, with no ads, no tracking, and no network requests.">
@@ -381,6 +381,7 @@
         <button class="btn ghost" type="button" data-go="settings" data-i18n="btn.settings">Settings</button>
         <button class="btn ghost" type="button" data-go="credits" id="btn-credits" hidden data-i18n="btn.credits">Credits</button>
         <button class="btn ghost" type="button" data-go="stickers" data-i18n="btn.stickers">Sticker book</button>
+        <button class="btn ghost" type="button" data-go="quit" id="btn-quit" data-i18n="btn.quit">Quit</button>
       </div>
       <p class="title-note" id="title-note" data-i18n="title.pressStartKb">Press Enter or click a button to start.</p>
     </div>
@@ -417,6 +418,7 @@
         <button class="btn ghost" type="button" data-go="settings" data-i18n="btn.settings">Settings</button>
         <button class="btn ghost" type="button" data-go="help" data-i18n="btn.help">How to play</button>
         <button class="btn ghost" type="button" data-go="select" data-i18n="btn.adventureSelect">Adventure select</button>
+        <button class="btn ghost" type="button" data-go="quit" id="btn-pause-quit" data-i18n="btn.quitGame">Quit game</button>
       </div>
     </div>
   </section>
@@ -499,6 +501,18 @@
       <h3 data-i18n="credits.thankYou">Thank you for playing</h3><p data-i18n="credits.goGiveTreat">Now go give a cat a treat.</p>
     </div>
     <button class="btn ghost small credits-skip" type="button" data-go="title" data-i18n="credits.backToTitle">Back to title</button>
+  </section>
+
+  <section class="screen" id="scr-quit" role="dialog" data-i18n-attr="aria-label:quit.dialogLabel">
+    <div class="panel">
+      <h2 data-i18n="quit.heading">Goodnight, Jefferson</h2>
+      <p data-i18n="quit.saved">Your progress is saved. Sound and gameplay are stopped.</p>
+      <p class="muted" id="quit-hint"></p>
+      <div class="row">
+        <button class="btn" type="button" id="btn-quit-resume" data-go="title" data-i18n="btn.playAgain">Play again</button>
+        <button class="btn ghost" type="button" id="btn-quit-back" hidden data-i18n="quit.leavePage">Leave page</button>
+      </div>
+    </div>
   </section>
 </div>
 
@@ -1198,6 +1212,16 @@ const STRINGS = {
     "sticker.ch3ConeFree.name": "Cone-Free!", "sticker.ch3ConeFree.hint": "Finish Getting Stronger and take the cone off.",
     "sticker.feastDay.name": "Thankful Tabby", "sticker.feastDay.hint": "Finish Feast Day.",
     "sticker.pilgrimHat.name": "Dapper Pilgrim", "sticker.pilgrimHat.hint": "Find and wear the pilgrim hat in Feast Day.",
+    "btn.quit": "Quit",
+    "btn.quitGame": "Quit game",
+    "quit.dialogLabel": "Game closed",
+    "quit.heading": "Goodnight, Jefferson",
+    "quit.saved": "Your progress is saved. Sound and gameplay are stopped.",
+    "quit.hintTab": "You can safely close this tab now.",
+    "quit.hintFrame": "You can leave this page or close the tab anytime.",
+    "quit.hintFsKb": "Press Esc to leave full screen, then close this tab.",
+    "quit.leavePage": "Leave page",
+    "quit.announced": "Game closed. Your progress is saved.",
   },
   es: {
     // TODO-i18n-review: the aria-label below drops "Adventures" to avoid mixing languages in one phrase.
@@ -1826,6 +1850,16 @@ const STRINGS = {
     "sticker.ch3ConeFree.name": "¡Sin Cono!", "sticker.ch3ConeFree.hint": "Termina Más Fuerte Cada Día y quítate el cono.",
     "sticker.feastDay.name": "Atigrado Agradecido", "sticker.feastDay.hint": "Termina Día del Festín.",
     "sticker.pilgrimHat.name": "Peregrino Elegante", "sticker.pilgrimHat.hint": "Encuentra y ponte el sombrero de peregrino en Día del Festín.",
+    "btn.quit": "Salir",
+    "btn.quitGame": "Salir del juego",
+    "quit.dialogLabel": "Juego cerrado",
+    "quit.heading": "Buenas noches, Jefferson",
+    "quit.saved": "Tu progreso está guardado. El sonido y el juego se han detenido.",
+    "quit.hintTab": "Ya puedes cerrar esta pestaña.",
+    "quit.hintFrame": "Puedes salir de esta página o cerrar la pestaña cuando quieras.",
+    "quit.hintFsKb": "Pulsa Esc para salir de pantalla completa y luego cierra esta pestaña.",
+    "quit.leavePage": "Salir de la página",
+    "quit.announced": "Juego cerrado. Tu progreso está guardado.",
   },
   fr: {
     // TODO-i18n-review: same call as the Spanish entry — drops "Adventures" to avoid mixing languages.
@@ -2453,6 +2487,16 @@ const STRINGS = {
     "sticker.ch3ConeFree.name": "Sans collerette !", "sticker.ch3ConeFree.hint": "Termine Reprendre des Forces et enlève la collerette.",
     "sticker.feastDay.name": "Tigré reconnaissant", "sticker.feastDay.hint": "Termine Jour de Festin.",
     "sticker.pilgrimHat.name": "Pèlerin coquet", "sticker.pilgrimHat.hint": "Trouve et porte le chapeau de pèlerin dans Jour de Festin.",
+    "btn.quit": "Quitter",
+    "btn.quitGame": "Quitter le jeu",
+    "quit.dialogLabel": "Jeu fermé",
+    "quit.heading": "Bonne nuit, Jefferson",
+    "quit.saved": "Ta progression est enregistrée. Le son et le jeu sont arrêtés.",
+    "quit.hintTab": "Tu peux fermer cet onglet en toute tranquillité.",
+    "quit.hintFrame": "Tu peux quitter cette page ou fermer l'onglet à tout moment.",
+    "quit.hintFsKb": "Appuie sur Échap pour quitter le plein écran, puis ferme cet onglet.",
+    "quit.leavePage": "Quitter la page",
+    "quit.announced": "Jeu fermé. Ta progression est enregistrée.",
   },
   hi: {
     // TODO-i18n-review: drops "Adventures" from the aria-label below to avoid an awkward mix, same call as es/fr.
@@ -3082,6 +3126,16 @@ const STRINGS = {
     "sticker.ch3ConeFree.name": "कोन-मुक्त!", "sticker.ch3ConeFree.hint": "ताकत की वापसी पूरा करें और कोन उतार दें।",
     "sticker.feastDay.name": "शुक्रगुज़ार टैबी", "sticker.feastDay.hint": "दावत का दिन पूरा करें।",
     "sticker.pilgrimHat.name": "सजीला पिलग्रिम", "sticker.pilgrimHat.hint": "दावत का दिन में पिलग्रिम टोपी ढूंढें और पहनें।",
+    "btn.quit": "बाहर निकलें",
+    "btn.quitGame": "गेम बंद करें",
+    "quit.dialogLabel": "गेम बंद हो गया",
+    "quit.heading": "शुभ रात्रि, जेफरसन",
+    "quit.saved": "आपकी प्रगति सहेजी गई है। आवाज़ और गेम रुक गए हैं।",
+    "quit.hintTab": "अब आप यह टैब बंद कर सकते हैं।",
+    "quit.hintFrame": "आप कभी भी इस पेज से बाहर निकल सकते हैं या टैब बंद कर सकते हैं।",
+    "quit.hintFsKb": "फ़ुल स्क्रीन से बाहर निकलने के लिए Esc दबाएं, फिर यह टैब बंद करें।",
+    "quit.leavePage": "पेज छोड़ें",
+    "quit.announced": "गेम बंद हो गया। आपकी प्रगति सहेजी गई है।",
   },
   zh: {
     // TODO-i18n-review: drops "Adventures" from the aria-label below to avoid an awkward mix, same call as es/fr.
@@ -3709,6 +3763,16 @@ const STRINGS = {
     "sticker.ch3ConeFree.name": "告别头套！", "sticker.ch3ConeFree.hint": "完成“变强壮”并摘掉头套。",
     "sticker.feastDay.name": "感恩虎斑猫", "sticker.feastDay.hint": "完成“大餐日”。",
     "sticker.pilgrimHat.name": "风度朝圣者", "sticker.pilgrimHat.hint": "在“大餐日”找到并戴上朝圣者帽。",
+    "btn.quit": "退出",
+    "btn.quitGame": "退出游戏",
+    "quit.dialogLabel": "游戏已退出",
+    "quit.heading": "晚安，杰斐逊",
+    "quit.saved": "你的进度已保存，声音和游戏已停止。",
+    "quit.hintTab": "你现在可以关闭此标签页了。",
+    "quit.hintFrame": "你可以随时离开此页面或关闭标签页。",
+    "quit.hintFsKb": "按 Esc 退出全屏，然后关闭此标签页。",
+    "quit.leavePage": "离开页面",
+    "quit.announced": "游戏已退出，进度已保存。",
   },
   ar: {
     // TODO-i18n-review: drops "Adventures" from the aria-label below to avoid an awkward mix, same call as es/fr.
@@ -4338,6 +4402,16 @@ const STRINGS = {
     "sticker.ch3ConeFree.name": "تحرّر من القمع!", "sticker.ch3ConeFree.hint": "أنهِ استعادة القوة وانزع القمع.",
     "sticker.feastDay.name": "قط ممتن", "sticker.feastDay.hint": "أنهِ يوم الوليمة.",
     "sticker.pilgrimHat.name": "مهاجر أنيق", "sticker.pilgrimHat.hint": "اعثر على قبعة المهاجر وارتدِها في يوم الوليمة.",
+    "btn.quit": "خروج",
+    "btn.quitGame": "إنهاء اللعبة",
+    "quit.dialogLabel": "تم إغلاق اللعبة",
+    "quit.heading": "تصبح على خير يا جيفرسون",
+    "quit.saved": "تم حفظ تقدمك. توقف الصوت واللعب.",
+    "quit.hintTab": "يمكنك إغلاق هذه الصفحة الآن.",
+    "quit.hintFrame": "يمكنك مغادرة هذه الصفحة أو إغلاق التبويب في أي وقت.",
+    "quit.hintFsKb": "اضغط Esc لمغادرة ملء الشاشة، ثم أغلق هذه الصفحة.",
+    "quit.leavePage": "مغادرة الصفحة",
+    "quit.announced": "تم إغلاق اللعبة وحفظ تقدمك.",
   },
 };
 const SUPPORTED_LANGS = ["en", "es", "fr", "hi", "zh", "ar"];
@@ -5444,7 +5518,7 @@ const Sound = {
     if (!this.init()) return;
     if (this.ctx.state === "suspended" || this.ctx.state === "interrupted") this.ctx.resume().catch(() => {});
   },
-  suspend() { if (this.ctx && this.ctx.state === "running") this.ctx.suspend().catch(() => {}); },
+  suspend() { if (this.ctx && this.ctx.state !== "closed") this.ctx.suspend().catch(() => {}); },
   apply(duck) {
     if (!this.ctx) return;
     const st = save.settings, t = this.ctx.currentTime;
@@ -8429,6 +8503,7 @@ function layout() {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const cw = Math.max(1, Math.round(w * dpr)), ch = Math.max(1, Math.round(h * dpr));
   if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+  if (mode === "quit") drawQuitBackdrop();
   if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
 }
 let layoutQueued = false, rotT1 = 0, rotT2 = 0;
@@ -8508,6 +8583,7 @@ function setLang(lang) {
   if (mode === "select") buildSelect();
   if (mode === "stickers") buildStickers();
   if (mode === "pause" && game) $("pause-goal").textContent = t(game.L.goalText);
+  if (mode === "quit") syncQuitUI();
 }
 $("set-lang").addEventListener("change", e => setLang(e.target.value));
 const popcount = m => ((m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1));
@@ -8532,6 +8608,7 @@ function setMusic(spec, seed) {
   if (Sound.ctx) Sound.startMusic(spec, seed);
 }
 function unlockAudio() {
+  if (mode === "quit") return;
   const fresh = !Sound.ctx;
   // Before the first real gesture a new context would only start suspended (and warn).
   const ua = navigator.userActivation;
@@ -8554,6 +8631,22 @@ function focusables(scope) {
   if (!root) return [];
   return [...root.querySelectorAll("button, input, select")].filter(e => !e.disabled && !e.hidden && e.offsetParent !== null);
 }
+function drawQuitBackdrop() {
+  const prevGame = game, prevDemo = demo;
+  game = null;
+  demo = makeDemo(CHAPTER1[CHAPTER1.length - 1].id, true);
+  render();
+  game = prevGame;
+  demo = prevDemo;
+}
+function syncQuitUI() {
+  const framed = window.self !== window.top;
+  const hint = isFs()
+    ? t(usedTouch ? "toast.fsExitTouch" : "quit.hintFsKb")
+    : t(framed ? "quit.hintFrame" : "quit.hintTab");
+  $("quit-hint").textContent = hint;
+  $("btn-quit-back").hidden = framed || history.length <= 1 || !document.referrer;
+}
 function show(name) {
   if (mode !== "play" && document.activeElement && document.activeElement !== document.body) lastFocus[mode] = document.activeElement;
   const prev = mode;
@@ -8561,6 +8654,18 @@ function show(name) {
   for (const s of document.querySelectorAll(".screen")) s.classList.toggle("active", s.id === "scr-" + name);
   document.body.classList.toggle("playing", name === "play");
   clearInput();
+  if (name === "quit") {
+    game = null; demo = null; musicWant = null;
+    Sound.stopLoops(); Sound.stopMusic(); Sound.sleep();
+    cancelAnimationFrame(rafId); rafId = 0;
+    syncQuitUI();
+    layout();
+    drawQuitBackdrop();
+    const target = $("btn-quit-resume");
+    if (target) target.focus({ preventScroll: true });
+    announce(t("quit.announced"));
+    return;
+  }
   if (name === "title") { game = null; refreshTitle(); }
   if (name === "select") { game = null; buildSelect(); }
   if (name === "settings") syncSettings();
@@ -8574,6 +8679,7 @@ function show(name) {
   else setMusic(TITLE_MUSIC, 0);
   Sound.apply(name !== "play" && name !== "credits");
   layout();
+  if (prev === "quit" && !asleep && !rafId) { last = performance.now(); runLoop(frame); }
   if (name === "play") { canvas.focus({ preventScroll: true }); return; }
   const scr = $("scr-" + name), remembered = lastFocus[name];
   let target = remembered && scr.contains(remembered) && focusables(scr).includes(remembered) ? remembered : null;
@@ -8901,6 +9007,19 @@ $("roll").addEventListener("animationend", () => {
   setTimeout(() => { if (mode === "credits") show("title"); }, 4000);
 });
 
+async function quitGame() {
+  writeSave();
+  show("quit");
+  if (isFs()) {
+    try { await leaveFullscreen(); } catch { /* fallback hint shown in #quit-hint */ }
+    syncFs();
+    if (mode === "quit") syncQuitUI();
+  }
+  if (mode === "quit" && window.self === window.top) {
+    try { window.close(); } catch { /* browser blocks closing non-script tabs; #scr-quit stays visible */ }
+  }
+}
+
 // data-go buttons
 const GO = {
   continue: () => startLevel(nextLevelId()),
@@ -8921,13 +9040,20 @@ const GO = {
   },
   credits: () => { creditsChapter = STORY_CHAPTERS.flat(); game = null; show("credits"); },
   title: () => show("title"),
+  quit: () => { quitGame(); },
 };
 for (const b of document.querySelectorAll("[data-go]")) {
   b.addEventListener("click", () => {
-    const f = GO[b.dataset.go];
-    if (f) { Sound.play("ui"); f(); }
+    const go = b.dataset.go, f = GO[go];
+    if (!f) return;
+    if (go === "quit") { f(); return; }
+    const wasQuit = mode === "quit";
+    f();
+    if (wasQuit) unlockAudio();
+    Sound.play("ui");
   });
 }
+$("btn-quit-back").addEventListener("click", () => { history.back(); });
 $("btn-pause").addEventListener("click", () => pause());
 $("btn-mute").addEventListener("click", () => { toggleMute(); if (mode === "play") canvas.focus({ preventScroll: true }); });
 
@@ -8976,6 +9102,7 @@ async function leaveFullscreen() {
     const tmp = document.createElement("div");
     document.body.append(tmp);
     try { await tmp.requestFullscreen(); } finally { tmp.remove(); }
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { /* ignore */ } }
     // Nothing to await on removal; wait until the size and display-mode catch up.
     await new Promise((done) => {
       const check = () => { if (!isFs()) finish(); };
@@ -8989,12 +9116,16 @@ async function leaveFullscreen() {
 }
 function syncFs() {
   const cl = document.body.classList;
-  if (cl.contains("fs-on") === isFs() && cl.contains("itch-phone") === itchPhone()) return;
+  if (cl.contains("fs-on") === isFs() && cl.contains("itch-phone") === itchPhone()) {
+    if (mode === "quit") syncQuitUI();
+    return;
+  }
   cl.toggle("fs-on", isFs());
   cl.toggle("itch-phone", itchPhone());
   const b = $("btn-exitfs"), label = t(itchPhone() ? "ui.closeGame" : "ui.exitFullscreen");
   b.setAttribute("aria-label", label); b.title = label;
   syncSettings(); queueLayout();
+  if (mode === "quit") syncQuitUI();
 }
 function syncSettings() {
   const st = save.settings;
@@ -9113,6 +9244,10 @@ addEventListener("keydown", e => {
     else if (a === "mute") toggleMute();
     return;
   }
+  if (mode === "quit") {
+    if (NAV_KEYS[e.key]) { e.preventDefault(); moveFocus(NAV_KEYS[e.key]); }
+    return;
+  }
   if (e.code === "Escape" || (e.code === "KeyP" && mode === "pause")) { e.preventDefault(); goBack(); return; }
   if (a === "mute" && !e.repeat) { toggleMute(); return; }
   const tag = document.activeElement && document.activeElement.tagName;
@@ -9137,7 +9272,8 @@ function sleepCheck() {
   const off = document.hidden || innerWidth < 2 || innerHeight < 2;
   if (off === asleep) return;
   asleep = off;
-  if (off) { cancelAnimationFrame(rafId); clearInput(); pause(); Sound.sleep(); return; }
+  if (off) { cancelAnimationFrame(rafId); rafId = 0; clearInput(); pause(); Sound.sleep(); return; }
+  if (mode === "quit") return;
   Sound.wake();
   last = performance.now();
   runLoop(frame);
@@ -9281,7 +9417,7 @@ function render() {
   if (game && (mode === "play" || mode === "pause")) drawHUD(game, clock);
 }
 function frame(now) {
-  if (asleep) return; // sleepCheck() restarts the loop
+  if (asleep || mode === "quit") { rafId = 0; return; }
   runLoop(frame);
   let dt = (now - last) / 1000;
   last = now;
@@ -9335,11 +9471,11 @@ if (TEST) {
       }
       return game;
     },
-    startLevel: id => startLevel(id, true), show, finishLevel, layout,
+    startLevel: id => startLevel(id, true), show, finishLevel, layout, quitGame,
     get mode() { return mode; }, get game() { return game; }, get save() { return save; },
     get touchActive() { return touchActive(); }, get portrait() { return portraitLayout; },
     get audioState() { return Sound.ctx ? Sound.ctx.state : "none"; },
-    get asleep() { return asleep; }, get musicTimer() { return !!Sound.timer; },
+    get asleep() { return asleep; }, get musicTimer() { return !!Sound.timer; }, get loopRunning() { return !!rafId; },
     freeze(on) { frozen = !!on; },
     step(n, held = []) {
       const set = new Set(held);
