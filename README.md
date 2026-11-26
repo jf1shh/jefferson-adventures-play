@@ -89,14 +89,14 @@ Menus work with a mouse, touch, Tab and arrow keys, or a gamepad (A to choose, B
 
 ## Settings and languages
 
-Settings lets you adjust sound effects, music, volume, touch controls (auto, on, or off), vibration, reduced motion, full screen, unlocked hats (none, witch hat, or pilgrim hat), and language. **Assist mode** gives endless climbing and calmer hazards for younger players or a relaxed run.
+Settings lets you adjust sound effects, music, volume, touch controls (auto, on, or off), vibration, reduced motion, full screen, unlocked hats (none, witch hat, or pilgrim hat), and language. Assist mode gives endless climbing and calmer hazards for younger players or a relaxed run.
 
 You can switch between English, Spanish, French, Hindi, Simplified Chinese, and Arabic (with full right-to-left layout).
 
 ## Saving and privacy
 
 - Progress saves in your browser on your device. Clearing site data resets it, and the game still runs if storage is blocked.
-- The game is free to play and makes **no network requests** once loaded. It has no ads, analytics, tracking, cookies, or accounts, enforced by a strict Content-Security-Policy.
+- The game makes no network requests once loaded. It has no ads, analytics, tracking, cookies, or accounts, enforced by a strict Content-Security-Policy.
 
 ## Play a local copy
 
@@ -105,6 +105,14 @@ The game lives in the single file [`index.html`](index.html), roughly 600 KB. Yo
 ## About the art and sound
 
 Every background, character, prop, and sound effect is drawn and synthesised in code inside `index.html`. No photos of the real Jefferson and no external image or audio files are used.
+
+## Links
+
+- Play on GitHub Pages: https://jf1shh.github.io/jefferson-adventures-play/
+- Play on itch.io: https://jf1shh.itch.io/jefferson-adventures
+- Trailer and channel on YouTube: https://www.youtube.com/@JeffersonAdventures
+- Instagram: https://www.instagram.com/jeffersonadventures/
+- Facebook: https://www.facebook.com/profile.php?id=61595460166996
 
 ## Credits
 
